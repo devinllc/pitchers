@@ -1,0 +1,262 @@
+{
+	"name": "👑 Admin Dashboard",
+	"item": [
+		{
+			"name": "Get Dashboard Summary",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/admin/dashboard",
+					"host": ["{{baseUrl}}"],
+					"path": ["admin", "dashboard"]
+				},
+				"description": "Retrieves summary statistics for the admin dashboard"
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Users",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/admin/users?page=1&limit=20&search=user@example.com",
+					"host": ["{{baseUrl}}"],
+					"path": ["admin", "users"],
+					"query": [
+						{
+							"key": "page",
+							"value": "1",
+							"description": "Page number for pagination"
+						},
+						{
+							"key": "limit",
+							"value": "20",
+							"description": "Number of users per page"
+						},
+						{
+							"key": "search",
+							"value": "user@example.com",
+							"description": "Search term for filtering users"
+						}
+					]
+				},
+				"description": "Retrieves all users with pagination and search"
+			},
+			"response": []
+		},
+		{
+			"name": "Get User Details",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/admin/users/user@example.com",
+					"host": ["{{baseUrl}}"],
+					"path": ["admin", "users", "user@example.com"]
+				},
+				"description": "Retrieves detailed information for a specific user"
+			},
+			"response": []
+		},
+		{
+			"name": "Assign Plan to User",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"userEmail\": \"user@example.com\",\n  \"planId\": \"pro\",\n  \"duration\": 30,\n  \"notes\": \"Assigned by admin\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/admin/users/assign-plan",
+					"host": ["{{baseUrl}}"],
+					"path": ["admin", "users", "assign-plan"]
+				},
+				"description": "Assigns a subscription plan to a user without payment"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Usage Statistics",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/admin/usage/statistics?period=month",
+					"host": ["{{baseUrl}}"],
+					"path": ["admin", "usage", "statistics"],
+					"query": [
+						{
+							"key": "period",
+							"value": "month",
+							"description": "Statistics period: day, week, month"
+						}
+					]
+				},
+				"description": "Provides overall, resource-specific, and top-user usage statistics"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Subscription Statistics",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/admin/subscriptions/statistics?period=month",
+					"host": ["{{baseUrl}}"],
+					"path": ["admin", "subscriptions", "statistics"],
+					"query": [
+						{
+							"key": "period",
+							"value": "month",
+							"description": "Statistics period: day, week, month"
+						}
+					]
+				},
+				"description": "Provides active plan counts, status counts, recent subscriptions, and monthly revenue"
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Plans (Admin)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/admin/subscription/plans",
+					"host": ["{{baseUrl}}"],
+					"path": ["admin", "subscription", "plans"]
+				},
+				"description": "Retrieves all available plans for admin management"
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Admin Users",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/admin/admins",
+					"host": ["{{baseUrl}}"],
+					"path": ["admin", "admins"]
+				},
+				"description": "Retrieves all admin users (requires super admin)"
+			},
+			"response": []
+		},
+		{
+			"name": "Add Admin User",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"newadmin@example.com\",\n  \"name\": \"New Admin\",\n  \"role\": \"admin\",\n  \"isSuperAdmin\": false\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/admin/admins",
+					"host": ["{{baseUrl}}"],
+					"path": ["admin", "admins"]
+				},
+				"description": "Adds a new admin user (requires super admin)"
+			},
+			"response": []
+		},
+		{
+			"name": "Remove Admin User",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/admin/admins/admin@example.com",
+					"host": ["{{baseUrl}}"],
+					"path": ["admin", "admins", "admin@example.com"]
+				},
+				"description": "Removes an admin user (requires super admin)"
+			},
+			"response": []
+		},
+		{
+			"name": "Debug Token (Development Only)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/admin/debug/token",
+					"host": ["{{baseUrl}}"],
+					"path": ["admin", "debug", "token"]
+				},
+				"description": "Debug endpoint to inspect JWT payload (development only)"
+			},
+			"response": []
+		}
+	]
+}
+

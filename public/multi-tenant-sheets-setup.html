@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Tenant Google Sheets Setup</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .section h2 {
+            color: #4285f4;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        input[type="email"], input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .sheets-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .sheet-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sheet-item:last-child {
+            border-bottom: none;
+        }
+        .sheet-info {
+            flex-grow: 1;
+        }
+        .sheet-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .sheet-id {
+            font-size: 12px;
+            color: #666;
+            font-family: monospace;
+        }
+        .connected-sheets {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            background-color: #f0f0f0;
+            margin: 0 5px;
+            border-radius: 4px;
+        }
+        .step.active {
+            background-color: #4285f4;
+            color: white;
+        }
+        .step.completed {
+            background-color: #34a853;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Multi-Tenant Google Sheets Setup</h1>
+        
+        <div class="step-indicator">
+            <div class="step active" id="step1">1. Enter Email</div>
+            <div class="step" id="step2">2. Connect Google</div>
+            <div class="step" id="step3">3. Manage Sheets</div>
+        </div>
+
+        <!-- Step 1: User Email -->
+        <div class="section" id="emailSection">
+            <h2>Step 1: Enter Your Email</h2>
+            <div class="info">
+                Enter your email address to manage your Google Sheets connections and access your data.
+            </div>
+            <div class="form-group">
+                <label for="userEmail">Email Address:</label>
+                <input type="email" id="userEmail" placeholder="your.email@example.com" required>
+            </div>
+            <button onclick="setUserEmail()">Continue</button>
+        </div>
+
+        <!-- Step 2: Google OAuth -->
+        <div class="section" id="oauthSection" style="display: none;">
+            <h2>Step 2: Connect Your Google Account</h2>
+            <div class="info">
+                Connect your Google account to access and manage your Google Sheets.
+            </div>
+            <div id="connectionStatus"></div>
+            <button onclick="connectGoogle()" id="connectBtn">Connect with Google</button>
+            <button onclick="checkConnection()" id="checkBtn" style="background-color: #6c757d;">Check Connection</button>
+        </div>
+
+        <!-- Step 3: Manage Sheets -->
+        <div class="section" id="sheetsSection" style="display: none;">
+            <h2>Step 3: Manage Your Google Sheets</h2>
+            
+            <div class="form-group">
+                <h3>Create New Sheet</h3>
+                <label for="newSheetName">Sheet Name:</label>
+                <input type="text" id="newSheetName" placeholder="My Business Data Sheet">
+                <button onclick="createNewSheet()">Create New Sheet</button>
+            </div>
+
+            <div class="form-group">
+                <h3>Connect Existing Sheet</h3>
+                <label for="existingSheetId">Sheet ID:</label>
+                <input type="text" id="existingSheetId" placeholder="1zbbz46lAcfhTZaSoyPPGdYIqMzoJYH8QcNs2wxnEDQ4">
+                <button onclick="connectExistingSheet()">Connect Sheet</button>
+            </div>
+
+            <div class="form-group">
+                <h3>Available Sheets in Your Google Account</h3>
+                <button onclick="loadAvailableSheets()">Load My Sheets</button>
+                <div id="availableSheets"></div>
+            </div>
+
+            <div class="connected-sheets">
+                <h3>Your Connected Sheets</h3>
+                <button onclick="loadConnectedSheets()">Refresh Connected Sheets</button>
+                <div id="connectedSheets"></div>
+            </div>
+        </div>
+
+        <!-- Data Management Section -->
+        <div class="section" id="dataSection" style="display: none;">
+            <h2>Your Business Data</h2>
+            <div class="form-group">
+                <button onclick="loadUserData()">Load My Data</button>
+                <button onclick="exportUserData()" style="background-color: #28a745;">Export to CSV</button>
+            </div>
+            <div id="userData"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentUserEmail = '';
+        let isConnected = false;
+
+        function setUserEmail() {
+            const email = document.getElementById('userEmail').value;
+            if (!email || !email.includes('@')) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            currentUserEmail = email;
+            document.getElementById('emailSection').style.display = 'none';
+            document.getElementById('oauthSection').style.display = 'block';
+            
+            // Update step indicator
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step1').classList.add('completed');
+            document.getElementById('step2').classList.add('active');
+            
+            // Check if user is already connected
+            checkConnection();
+        }
+
+        async function checkConnection() {
+            try {
+                const response = await fetch(`/multi-tenant-sheets/auth/status?userEmail=${encodeURIComponent(currentUserEmail)}`);
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('connectionStatus');
+                if (data.success && data.isConnected) {
+                    statusDiv.innerHTML = '<div class="success">✓ Your Google account is connected!</div>';
+                    isConnected = true;
+                    showSheetsSection();
+                } else {
+                    statusDiv.innerHTML = '<div class="info">You need to connect your Google account to continue.</div>';
+                    isConnected = false;
+                }
+            } catch (error) {
+                console.error('Error checking connection:', error);
+                document.getElementById('connectionStatus').innerHTML = '<div class="error">Error checking connection status</div>';
+            }
+        }
+
+        async function connectGoogle() {
+            try {
+                const response = await fetch(`/multi-tenant-sheets/auth/url?userEmail=${encodeURIComponent(currentUserEmail)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = data.authUrl;
+                } else {
+                    alert('Error generating auth URL: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error connecting to Google:', error);
+                alert('Error connecting to Google');
+            }
+        }
+
+        function showSheetsSection() {
+            document.getElementById('oauthSection').style.display = 'none';
+            document.getElementById('sheetsSection').style.display = 'block';
+            document.getElementById('dataSection').style.display = 'block';
+            
+            // Update step indicator
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step2').classList.add('completed');
+            document.getElementById('step3').classList.add('active');
+            
+            loadConnectedSheets();
+        }
+
+        async function createNewSheet() {
+            const sheetName = document.getElementById('newSheetName').value;
+            if (!sheetName) {
+                alert('Please enter a sheet name');
+                return;
+            }
+
+            try {
+                const response = await fetch('/multi-tenant-sheets/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userEmail: currentUserEmail,
+                        sheetName: sheetName
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Sheet created successfully!');
+                    document.getElementById('newSheetName').value = '';
+                    loadConnectedSheets();
+                } else {
+                    alert('Error creating sheet: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error creating sheet:', error);
+                alert('Error creating sheet');
+            }
+        }
+
+        async function connectExistingSheet() {
+            const sheetId = document.getElementById('existingSheetId').value;
+            if (!sheetId) {
+                alert('Please enter a sheet ID');
+                return;
+            }
+
+            try {
+                const response = await fetch('/multi-tenant-sheets/connect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userEmail: currentUserEmail,
+                        sheetId: sheetId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Sheet connected successfully!');
+                    document.getElementById('existingSheetId').value = '';
+                    loadConnectedSheets();
+                } else {
+                    alert('Error connecting sheet: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error connecting sheet:', error);
+                alert('Error connecting sheet');
+            }
+        }
+
+        async function loadAvailableSheets() {
+            const availableSheetsDiv = document.getElementById('availableSheets');
+            availableSheetsDiv.innerHTML = '<div class="loading">Loading your Google Sheets...</div>';
+
+            try {
+                const response = await fetch(`/multi-tenant-sheets/available?userEmail=${encodeURIComponent(currentUserEmail)}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.sheets.length === 0) {
+                        availableSheetsDiv.innerHTML = '<div class="info">No sheets found in your Google account.</div>';
+                        return;
+                    }
+
+                    let html = '<div class="sheets-list">';
+                    data.sheets.forEach(sheet => {
+                        html += `
+                            <div class="sheet-item">
+                                <div class="sheet-info">
+                                    <div class="sheet-name">${sheet.name}</div>
+                                    <div class="sheet-id">${sheet.id}</div>
+                                </div>
+                                <button onclick="connectSheetById('${sheet.id}')">Connect</button>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    availableSheetsDiv.innerHTML = html;
+                } else {
+                    availableSheetsDiv.innerHTML = '<div class="error">Error loading sheets: ' + data.message + '</div>';
+                }
+            } catch (error) {
+                console.error('Error loading available sheets:', error);
+                availableSheetsDiv.innerHTML = '<div class="error">Error loading sheets</div>';
+            }
+        }
+
+        async function connectSheetById(sheetId) {
+            try {
+                const response = await fetch('/multi-tenant-sheets/connect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userEmail: currentUserEmail,
+                        sheetId: sheetId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Sheet connected successfully!');
+                    loadConnectedSheets();
+                } else {
+                    alert('Error connecting sheet: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error connecting sheet:', error);
+                alert('Error connecting sheet');
+            }
+        }
+
+        async function loadConnectedSheets() {
+            const connectedSheetsDiv = document.getElementById('connectedSheets');
+            connectedSheetsDiv.innerHTML = '<div class="loading">Loading connected sheets...</div>';
+
+            try {
+                const response = await fetch(`/multi-tenant-sheets/connected?userEmail=${encodeURIComponent(currentUserEmail)}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.sheets.length === 0) {
+                        connectedSheetsDiv.innerHTML = '<div class="info">No sheets connected yet.</div>';
+                        return;
+                    }
+
+                    let html = '<div class="sheets-list">';
+                    data.sheets.forEach(sheet => {
+                        html += `
+                            <div class="sheet-item">
+                                <div class="sheet-info">
+                                    <div class="sheet-name">${sheet.sheet_name}</div>
+                                    <div class="sheet-id">${sheet.sheet_id}</div>
+                                </div>
+                                <button onclick="disconnectSheet('${sheet.sheet_id}')" style="background-color: #dc3545;">Disconnect</button>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    connectedSheetsDiv.innerHTML = html;
+                } else {
+                    connectedSheetsDiv.innerHTML = '<div class="error">Error loading connected sheets: ' + data.message + '</div>';
+                }
+            } catch (error) {
+                console.error('Error loading connected sheets:', error);
+                connectedSheetsDiv.innerHTML = '<div class="error">Error loading connected sheets</div>';
+            }
+        }
+
+        async function disconnectSheet(sheetId) {
+            if (!confirm('Are you sure you want to disconnect this sheet?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/multi-tenant-sheets/${sheetId}?userEmail=${encodeURIComponent(currentUserEmail)}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Sheet disconnected successfully!');
+                    loadConnectedSheets();
+                } else {
+                    alert('Error disconnecting sheet: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error disconnecting sheet:', error);
+                alert('Error disconnecting sheet');
+            }
+        }
+
+        async function loadUserData() {
+            const userDataDiv = document.getElementById('userData');
+            userDataDiv.innerHTML = '<div class="loading">Loading your business data...</div>';
+
+            try {
+                const response = await fetch(`/user-data/summary?userEmail=${encodeURIComponent(currentUserEmail)}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const summary = data.summary;
+                    let html = `
+                        <div class="info">
+                            <h4>Data Summary</h4>
+                            <p><strong>Total Records:</strong> ${summary.totalRecords}</p>
+                            <p><strong>Unique Cities:</strong> ${summary.uniqueCities}</p>
+                            <p><strong>Unique Keywords:</strong> ${summary.uniqueKeywords}</p>
+                            <p><strong>Records with Phone:</strong> ${summary.recordsWithPhone}</p>
+                            <p><strong>Records with Website:</strong> ${summary.recordsWithWebsite}</p>
+                            <p><strong>Records with Email:</strong> ${summary.recordsWithEmail}</p>
+                        </div>
+                    `;
+                    userDataDiv.innerHTML = html;
+                } else {
+                    userDataDiv.innerHTML = '<div class="error">Error loading data summary: ' + data.message + '</div>';
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                userDataDiv.innerHTML = '<div class="error">Error loading user data</div>';
+            }
+        }
+
+        async function exportUserData() {
+            try {
+                const url = `/user-data/export/csv?userEmail=${encodeURIComponent(currentUserEmail)}`;
+                window.open(url, '_blank');
+            } catch (error) {
+                console.error('Error exporting data:', error);
+                alert('Error exporting data');
+            }
+        }
+
+        // Check URL parameters for OAuth callback
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+
+        if (code && state) {
+            // Handle OAuth callback
+            const stateData = JSON.parse(decodeURIComponent(state));
+            currentUserEmail = stateData.userEmail;
+            document.getElementById('userEmail').value = currentUserEmail;
+            
+            // Show success message and proceed to sheets section
+            document.getElementById('connectionStatus').innerHTML = '<div class="success">✓ Google account connected successfully!</div>';
+            isConnected = true;
+            showSheetsSection();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,580 @@
+{
+	"info": {
+		"_postman_id": "pitchers-saas-api-collection",
+		"name": "Pitchers SaaS API - Complete Collection",
+		"description": "Complete Postman collection for testing all 120+ endpoints in the Pitchers SaaS platform. Covers authentication, subscriptions, Google Sheets integration, job management, usage tracking, admin operations, and legacy APIs.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "pitchers-saas"
+	},
+	"item": [
+		{
+			"name": "🔐 Authentication & User Management",
+			"item": [
+				{
+					"name": "Google OAuth Authorization",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/google/authorize",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "google", "authorize"]
+						},
+						"description": "Initiates Google OAuth flow and returns authorization URL"
+					},
+					"response": []
+				},
+				{
+					"name": "Google OAuth Callback",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/google/callback?code={{authCode}}&state={{state}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "google", "callback"],
+							"query": [
+								{
+									"key": "code",
+									"value": "{{authCode}}",
+									"description": "Authorization code from Google"
+								},
+								{
+									"key": "state",
+									"value": "{{state}}",
+									"description": "State parameter for CSRF protection"
+								}
+							]
+						},
+						"description": "Handles Google OAuth callback and returns JWT tokens"
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/refresh-token",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "refresh-token"]
+						},
+						"description": "Refreshes JWT token using refresh token"
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/logout",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "logout"]
+						},
+						"description": "Logs out user and revokes refresh token"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "me"]
+						},
+						"description": "Returns current user information"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "💳 Subscription Management",
+			"item": [
+				{
+					"name": "Get All Plans",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/subscription/plans",
+							"host": ["{{baseUrl}}"],
+							"path": ["subscription", "plans"]
+						},
+						"description": "Retrieves all available subscription plans"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Subscription Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/subscription/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["subscription", "status"]
+						},
+						"description": "Returns current user's subscription status"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Subscription",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"planId\": \"basic\",\n  \"currency\": \"INR\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/subscription/create",
+							"host": ["{{baseUrl}}"],
+							"path": ["subscription", "create"]
+						},
+						"description": "Creates a new subscription and returns Razorpay order"
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"razorpay_payment_id\": \"pay_1234567890\",\n  \"razorpay_order_id\": \"order_1234567890\",\n  \"razorpay_signature\": \"signature_hash\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/subscription/verify-payment",
+							"host": ["{{baseUrl}}"],
+							"path": ["subscription", "verify-payment"]
+						},
+						"description": "Verifies Razorpay payment and activates subscription"
+					},
+					"response": []
+				},
+				{
+					"name": "Razorpay Webhook",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Razorpay-Signature",
+								"value": "{{razorpaySignature}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event\": \"payment.captured\",\n  \"payload\": {\n    \"payment\": {\n      \"id\": \"pay_1234567890\",\n      \"order_id\": \"order_1234567890\"\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/subscription/webhook",
+							"host": ["{{baseUrl}}"],
+							"path": ["subscription", "webhook"]
+						},
+						"description": "Handles Razorpay webhook events"
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Subscription",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/subscription/cancel",
+							"host": ["{{baseUrl}}"],
+							"path": ["subscription", "cancel"]
+						},
+						"description": "Cancels current user's active subscription"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📊 Google Sheets Integration",
+			"item": [
+				{
+					"name": "Connect Google Sheets",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/connect",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "connect"]
+						},
+						"description": "Initiates Google Sheets OAuth flow"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Connection Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "status"]
+						},
+						"description": "Checks Google Sheets connection status"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Available Sheets",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/available",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "available"]
+						},
+						"description": "Lists available Google Sheets for the user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Connected Sheets",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/connected",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "connected"]
+						},
+						"description": "Lists Google Sheets connected to the platform"
+					},
+					"response": []
+				},
+				{
+					"name": "Create New Sheet",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Business Leads\",\n  \"description\": \"Generated business leads\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/create",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "create"]
+						},
+						"description": "Creates a new Google Sheet for the user"
+					},
+					"response": []
+				},
+				{
+					"name": "Connect Existing Sheet",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sheetId\": \"1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/connect",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "connect"]
+						},
+						"description": "Connects an existing Google Sheet for the user"
+					},
+					"response": []
+				},
+				{
+					"name": "Disconnect Sheet",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/{{sheetId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "{{sheetId}}"]
+						},
+						"description": "Disconnects a specific Google Sheet"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sheet Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/data?page=1&limit=100&startDate=2024-01-01&endDate=2024-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "data"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number for pagination"
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Number of records per page"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-01-01",
+									"description": "Start date for filtering"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31",
+									"description": "End date for filtering"
+								}
+							]
+						},
+						"description": "Retrieves business data from Google Sheets with pagination and filters"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sheet Data Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/data/stats?startDate=2024-01-01&endDate=2024-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "data", "stats"],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2024-01-01",
+									"description": "Start date for statistics"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31",
+									"description": "End date for statistics"
+								}
+							]
+						},
+						"description": "Retrieves statistics for business data in Google Sheets"
+					},
+					"response": []
+				},
+				{
+					"name": "Save Data to Sheet",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sheetId\": \"1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms\",\n  \"data\": [\n    {\n      \"name\": \"Sample Business\",\n      \"address\": \"123 Main St\",\n      \"phone\": \"+1234567890\",\n      \"website\": \"https://example.com\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/data/save",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "data", "save"]
+						},
+						"description": "Saves business data to a user's specific Google Sheet"
+					},
+					"response": []
+				},
+				{
+					"name": "Disconnect Google Account",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/disconnect",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "disconnect"]
+						},
+						"description": "Disconnects the user's entire Google account"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "jwtToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refreshToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "authCode",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "state",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "sheetId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "razorpaySignature",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

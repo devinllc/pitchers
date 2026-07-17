@@ -1,0 +1,128 @@
+{
+	"name": "🚀 Job Management",
+	"item": [
+		{
+			"name": "Create Job",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"city\": \"Delhi\",\n  \"keyword\": \"bridal makeup artist\",\n  \"method\": \"api\",\n  \"scraper\": {\n    \"maxResults\": 50,\n    \"maxScrollPages\": 5,\n    \"headless\": true,\n    \"wantWebsite\": true,\n    \"wantEmail\": true,\n    \"emailDeepPaths\": false\n  },\n  \"phrases\": {\n    \"maxPhrases\": 20\n  }\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/jobs/create",
+					"host": ["{{baseUrl}}"],
+					"path": ["jobs", "create"]
+				},
+				"description": "Creates a new lead generation job"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Job Status",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/jobs/{{jobId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["jobs", "{{jobId}}"]
+				},
+				"description": "Retrieves the status of a specific job"
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Jobs",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/jobs",
+					"host": ["{{baseUrl}}"],
+					"path": ["jobs"]
+				},
+				"description": "Retrieves all jobs for the current user"
+			},
+			"response": []
+		},
+		{
+			"name": "Pause Job",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/jobs/{{jobId}}/pause",
+					"host": ["{{baseUrl}}"],
+					"path": ["jobs", "{{jobId}}", "pause"]
+				},
+				"description": "Pauses a running job"
+			},
+			"response": []
+		},
+		{
+			"name": "Resume Job",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/jobs/{{jobId}}/resume",
+					"host": ["{{baseUrl}}"],
+					"path": ["jobs", "{{jobId}}", "resume"]
+				},
+				"description": "Resumes a paused job"
+			},
+			"response": []
+		},
+		{
+			"name": "Stop Job",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/jobs/{{jobId}}/stop",
+					"host": ["{{baseUrl}}"],
+					"path": ["jobs", "{{jobId}}", "stop"]
+				},
+				"description": "Stops a running job"
+			},
+			"response": []
+		}
+	]
+}
+

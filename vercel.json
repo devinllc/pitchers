@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/index.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index.js" },
+    { "src": "/oauth/google-sheets/setup", "dest": "/public/google-sheets-setup.html" },
+    { "src": "/google-sheets-setup", "dest": "/public/google-sheets-setup.html" },
+    { "src": "/api-keys(.*)", "dest": "/api/index.js" },
+    { "src": "/oauth(.*)", "dest": "/api/index.js" },
+    { "src": "/api-docs", "dest": "/api/index.js" },
+    { "src": "/health", "dest": "/api/index.js" },
+    { "src": "/search-service", "dest": "/api/index.js" },
+    { "src": "/status(.*)", "dest": "/api/index.js" },
+    { "src": "/jobs(.*)", "dest": "/api/index.js" },
+    { "src": "/performance(.*)", "dest": "/api/index.js" },
+    { "src": "/debug(.*)", "dest": "/api/index.js" },
+    { "src": "/", "dest": "/public/job-control.html" },
+    { "src": "/saas", "dest": "/public/saas-dashboard.html" },
+    { "src": "/public/(.*)", "dest": "/public/$1" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ]
+}

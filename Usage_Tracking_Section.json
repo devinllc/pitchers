@@ -1,0 +1,111 @@
+{
+	"name": "📈 Usage Tracking",
+	"item": [
+		{
+			"name": "Get Current Usage",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/usage/current",
+					"host": ["{{baseUrl}}"],
+					"path": ["usage", "current"]
+				},
+				"description": "Retrieves current usage, limits, and subscription details"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Usage History",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/usage/history?period=month&startDate=2024-01-01&endDate=2024-12-31",
+					"host": ["{{baseUrl}}"],
+					"path": ["usage", "history"],
+					"query": [
+						{
+							"key": "period",
+							"value": "month",
+							"description": "Grouping period: day, week, month"
+						},
+						{
+							"key": "startDate",
+							"value": "2024-01-01",
+							"description": "Start date for history"
+						},
+						{
+							"key": "endDate",
+							"value": "2024-12-31",
+							"description": "End date for history"
+						}
+					]
+				},
+				"description": "Retrieves usage history, grouped by day, week, or month"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Usage by Resource",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/usage/by-resource?startDate=2024-01-01&endDate=2024-12-31",
+					"host": ["{{baseUrl}}"],
+					"path": ["usage", "by-resource"],
+					"query": [
+						{
+							"key": "startDate",
+							"value": "2024-01-01",
+							"description": "Start date for resource breakdown"
+						},
+						{
+							"key": "endDate",
+							"value": "2024-12-31",
+							"description": "End date for resource breakdown"
+						}
+					]
+				},
+				"description": "Retrieves usage broken down by resource type"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Usage Forecast",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{jwtToken}}"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/usage/forecast",
+					"host": ["{{baseUrl}}"],
+					"path": ["usage", "forecast"]
+				},
+				"description": "Provides a usage forecast for the current billing cycle"
+			},
+			"response": []
+		}
+	]
+}
+

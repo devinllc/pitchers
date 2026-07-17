@@ -1,0 +1,1122 @@
+{
+	"info": {
+		"_postman_id": "pitchers-saas-api-collection",
+		"name": "Pitchers SaaS API - Complete Collection",
+		"description": "Complete Postman collection for testing all 120+ endpoints in the Pitchers SaaS platform. Covers authentication, subscriptions, Google Sheets integration, job management, usage tracking, admin operations, and legacy APIs.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "pitchers-saas"
+	},
+	"item": [
+		{
+			"name": "🔐 Authentication & User Management",
+			"item": [
+				{
+					"name": "Google OAuth Authorization",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/google/authorize",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "google", "authorize"]
+						},
+						"description": "Initiates Google OAuth flow and returns authorization URL"
+					},
+					"response": []
+				},
+				{
+					"name": "Google OAuth Callback",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/google/callback?code={{authCode}}&state={{state}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "google", "callback"],
+							"query": [
+								{
+									"key": "code",
+									"value": "{{authCode}}",
+									"description": "Authorization code from Google"
+								},
+								{
+									"key": "state",
+									"value": "{{state}}",
+									"description": "State parameter for CSRF protection"
+								}
+							]
+						},
+						"description": "Handles Google OAuth callback and returns JWT tokens"
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/refresh-token",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "refresh-token"]
+						},
+						"description": "Refreshes JWT token using refresh token"
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/logout",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "logout"]
+						},
+						"description": "Logs out user and revokes refresh token"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "me"]
+						},
+						"description": "Returns current user information"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "💳 Subscription Management",
+			"item": [
+				{
+					"name": "Get All Plans",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/subscription/plans",
+							"host": ["{{baseUrl}}"],
+							"path": ["subscription", "plans"]
+						},
+						"description": "Retrieves all available subscription plans"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Subscription Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/subscription/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["subscription", "status"]
+						},
+						"description": "Returns current user's subscription status"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Subscription",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"planId\": \"basic\",\n  \"currency\": \"INR\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/subscription/create",
+							"host": ["{{baseUrl}}"],
+							"path": ["subscription", "create"]
+						},
+						"description": "Creates a new subscription and returns Razorpay order"
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"razorpay_payment_id\": \"pay_1234567890\",\n  \"razorpay_order_id\": \"order_1234567890\",\n  \"razorpay_signature\": \"signature_hash\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/subscription/verify-payment",
+							"host": ["{{baseUrl}}"],
+							"path": ["subscription", "verify-payment"]
+						},
+						"description": "Verifies Razorpay payment and activates subscription"
+					},
+					"response": []
+				},
+				{
+					"name": "Razorpay Webhook",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Razorpay-Signature",
+								"value": "{{razorpaySignature}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event\": \"payment.captured\",\n  \"payload\": {\n    \"payment\": {\n      \"id\": \"pay_1234567890\",\n      \"order_id\": \"order_1234567890\"\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/subscription/webhook",
+							"host": ["{{baseUrl}}"],
+							"path": ["subscription", "webhook"]
+						},
+						"description": "Handles Razorpay webhook events"
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Subscription",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/subscription/cancel",
+							"host": ["{{baseUrl}}"],
+							"path": ["subscription", "cancel"]
+						},
+						"description": "Cancels current user's active subscription"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📊 Google Sheets Integration",
+			"item": [
+				{
+					"name": "Connect Google Sheets",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/connect",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "connect"]
+						},
+						"description": "Initiates Google Sheets OAuth flow"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Connection Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "status"]
+						},
+						"description": "Checks Google Sheets connection status"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Available Sheets",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/available",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "available"]
+						},
+						"description": "Lists available Google Sheets for the user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Connected Sheets",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/connected",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "connected"]
+						},
+						"description": "Lists Google Sheets connected to the platform"
+					},
+					"response": []
+				},
+				{
+					"name": "Create New Sheet",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Business Leads\",\n  \"description\": \"Generated business leads\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/create",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "create"]
+						},
+						"description": "Creates a new Google Sheet for the user"
+					},
+					"response": []
+				},
+				{
+					"name": "Connect Existing Sheet",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sheetId\": \"1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/connect",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "connect"]
+						},
+						"description": "Connects an existing Google Sheet for the user"
+					},
+					"response": []
+				},
+				{
+					"name": "Disconnect Sheet",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/{{sheetId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "{{sheetId}}"]
+						},
+						"description": "Disconnects a specific Google Sheet"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sheet Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/data?page=1&limit=100&startDate=2024-01-01&endDate=2024-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "data"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number for pagination"
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Number of records per page"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-01-01",
+									"description": "Start date for filtering"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31",
+									"description": "End date for filtering"
+								}
+							]
+						},
+						"description": "Retrieves business data from Google Sheets with pagination and filters"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sheet Data Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/data/stats?startDate=2024-01-01&endDate=2024-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "data", "stats"],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2024-01-01",
+									"description": "Start date for statistics"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31",
+									"description": "End date for statistics"
+								}
+							]
+						},
+						"description": "Retrieves statistics for business data in Google Sheets"
+					},
+					"response": []
+				},
+				{
+					"name": "Save Data to Sheet",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sheetId\": \"1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms\",\n  \"data\": [\n    {\n      \"name\": \"Sample Business\",\n      \"address\": \"123 Main St\",\n      \"phone\": \"+1234567890\",\n      \"website\": \"https://example.com\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/data/save",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "data", "save"]
+						},
+						"description": "Saves business data to a user's specific Google Sheet"
+					},
+					"response": []
+				},
+				{
+					"name": "Disconnect Google Account",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/google/sheets/disconnect",
+							"host": ["{{baseUrl}}"],
+							"path": ["google", "sheets", "disconnect"]
+						},
+						"description": "Disconnects the user's entire Google account"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🚀 Job Management",
+			"item": [
+				{
+					"name": "Create Job",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"city\": \"Delhi\",\n  \"keyword\": \"bridal makeup artist\",\n  \"method\": \"api\",\n  \"scraper\": {\n    \"maxResults\": 50,\n    \"maxScrollPages\": 5,\n    \"headless\": true,\n    \"wantWebsite\": true,\n    \"wantEmail\": true,\n    \"emailDeepPaths\": false\n  },\n  \"phrases\": {\n    \"maxPhrases\": 20\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/jobs/create",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "create"]
+						},
+						"description": "Creates a new lead generation job"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Job Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/{{jobId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "{{jobId}}"]
+						},
+						"description": "Retrieves the status of a specific job"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Jobs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/jobs",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs"]
+						},
+						"description": "Retrieves all jobs for the current user"
+					},
+					"response": []
+				},
+				{
+					"name": "Pause Job",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/{{jobId}}/pause",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "{{jobId}}", "pause"]
+						},
+						"description": "Pauses a running job"
+					},
+					"response": []
+				},
+				{
+					"name": "Resume Job",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/{{jobId}}/resume",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "{{jobId}}", "resume"]
+						},
+						"description": "Resumes a paused job"
+					},
+					"response": []
+				},
+				{
+					"name": "Stop Job",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/{{jobId}}/stop",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "{{jobId}}", "stop"]
+						},
+						"description": "Stops a running job"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📈 Usage Tracking",
+			"item": [
+				{
+					"name": "Get Current Usage",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/usage/current",
+							"host": ["{{baseUrl}}"],
+							"path": ["usage", "current"]
+						},
+						"description": "Retrieves current usage, limits, and subscription details"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Usage History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/usage/history?period=month&startDate=2024-01-01&endDate=2024-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["usage", "history"],
+							"query": [
+								{
+									"key": "period",
+									"value": "month",
+									"description": "Grouping period: day, week, month"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-01-01",
+									"description": "Start date for history"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31",
+									"description": "End date for history"
+								}
+							]
+						},
+						"description": "Retrieves usage history, grouped by day, week, or month"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Usage by Resource",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/usage/by-resource?startDate=2024-01-01&endDate=2024-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["usage", "by-resource"],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2024-01-01",
+									"description": "Start date for resource breakdown"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31",
+									"description": "End date for resource breakdown"
+								}
+							]
+						},
+						"description": "Retrieves usage broken down by resource type"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Usage Forecast",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/usage/forecast",
+							"host": ["{{baseUrl}}"],
+							"path": ["usage", "forecast"]
+						},
+						"description": "Provides a usage forecast for the current billing cycle"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👑 Admin Dashboard",
+			"item": [
+				{
+					"name": "Get Dashboard Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/dashboard",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "dashboard"]
+						},
+						"description": "Retrieves summary statistics for the admin dashboard"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/users?page=1&limit=20&search=user@example.com",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "users"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number for pagination"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Number of users per page"
+								},
+								{
+									"key": "search",
+									"value": "user@example.com",
+									"description": "Search term for filtering users"
+								}
+							]
+						},
+						"description": "Retrieves all users with pagination and search"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/users/user@example.com",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "users", "user@example.com"]
+						},
+						"description": "Retrieves detailed information for a specific user"
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Plan to User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userEmail\": \"user@example.com\",\n  \"planId\": \"pro\",\n  \"duration\": 30,\n  \"notes\": \"Assigned by admin\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/users/assign-plan",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "users", "assign-plan"]
+						},
+						"description": "Assigns a subscription plan to a user without payment"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Usage Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/usage/statistics?period=month",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "usage", "statistics"],
+							"query": [
+								{
+									"key": "period",
+									"value": "month",
+									"description": "Statistics period: day, week, month"
+								}
+							]
+						},
+						"description": "Provides overall, resource-specific, and top-user usage statistics"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Subscription Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/subscriptions/statistics?period=month",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "subscriptions", "statistics"],
+							"query": [
+								{
+									"key": "period",
+									"value": "month",
+									"description": "Statistics period: day, week, month"
+								}
+							]
+						},
+						"description": "Provides active plan counts, status counts, recent subscriptions, and monthly revenue"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Plans (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/subscription/plans",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "subscription", "plans"]
+						},
+						"description": "Retrieves all available plans for admin management"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Admin Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/admins",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "admins"]
+						},
+						"description": "Retrieves all admin users (requires super admin)"
+					},
+					"response": []
+				},
+				{
+					"name": "Add Admin User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"newadmin@example.com\",\n  \"name\": \"New Admin\",\n  \"role\": \"admin\",\n  \"isSuperAdmin\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/admins",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "admins"]
+						},
+						"description": "Adds a new admin user (requires super admin)"
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Admin User",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/admins/admin@example.com",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "admins", "admin@example.com"]
+						},
+						"description": "Removes an admin user (requires super admin)"
+					},
+					"response": []
+				},
+				{
+					"name": "Debug Token (Development Only)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/debug/token",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "debug", "token"]
+						},
+						"description": "Debug endpoint to inspect JWT payload (development only)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🏥 Health & System",
+			"item": [
+				{
+					"name": "System Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						},
+						"description": "Comprehensive system health check with performance metrics"
+					},
+					"response": []
+				},
+				{
+					"name": "API Documentation",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api-docs",
+							"host": ["{{baseUrl}}"],
+							"path": ["api-docs"]
+						},
+						"description": "Complete API documentation with examples"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "jwtToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refreshToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "authCode",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "state",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "sheetId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "jobId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "razorpaySignature",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "apiKey",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+

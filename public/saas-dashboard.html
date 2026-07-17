@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Business Scraper - SaaS Dashboard</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .header {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .btn-create { background: #28a745; color: white; }
+        .btn-start { background: #007bff; color: white; }
+        .btn-refresh { background: #6c757d; color: white; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .status-card {
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+        }
+        .api-key-card {
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            position: relative;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .input-group input, .input-group select {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-active { background: #28a745; }
+        .status-idle { background: #6c757d; }
+        .api-key-display {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .error { color: #dc3545; }
+        .success { color: #28a745; }
+        .warning { color: #ffc107; }
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #dee2e6;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            color: #6c757d;
+            border-bottom: 2px solid transparent;
+        }
+        .tab.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔑 Local Business Scraper</h1>
+            <p>SaaS Dashboard & API Key Management</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('oauth')">OAuth & Setup</button>
+            <button class="tab" onclick="showTab('api-keys')">API Keys</button>
+            <button class="tab" onclick="showTab('usage')">Usage & Jobs</button>
+            <button class="tab" onclick="showTab('admin')">Admin</button>
+            <button class="tab" onclick="showTab('activity')">Activity Log</button>
+        </div>
+
+        <div id="oauth" class="tab-content active">
+            <div class="container">
+                <h3>🔐 Connect Google Sheets (OAuth)</h3>
+                <p>Complete the SaaS flow: OAuth → Auto API Key Generation → Start Processing</p>
+                
+                <div class="input-group">
+                    <input type="email" id="oauthUserEmail" placeholder="Enter your email address">
+                    <button class="btn btn-create" onclick="connectOAuth()">🔗 Connect Google Sheets</button>
+                    <button class="btn btn-refresh" onclick="checkOAuthStatus()">🔄 Check Status</button>
+                </div>
+                
+                <div id="oauthStatus" class="status-card">
+                    <div class="status-indicator status-idle"></div>
+                    Enter your email and click "Connect Google Sheets" to start
+                </div>
+                
+                <div id="connectedSheetsSection" style="display: none;">
+                    <h4>📊 Your Connected Sheets</h4>
+                    <div id="connectedSheetsList"></div>
+                </div>
+                
+                <div id="autoApiKeySection" style="display: none;">
+                    <h4>🔑 Auto-Generated API Key</h4>
+                    <div id="autoApiKey" class="api-key-card">
+                        <div class="status-indicator status-active"></div>
+                        API key will appear here after OAuth
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="api-keys" class="tab-content">
+            <div class="container">
+                <h3>Create New API Key</h3>
+                <div class="input-group">
+                    <input type="email" id="userEmail" placeholder="User Email">
+                    <select id="planType">
+                        <option value="free">Free Plan</option>
+                        <option value="basic">Basic Plan</option>
+                        <option value="pro">Pro Plan</option>
+                        <option value="enterprise">Enterprise Plan</option>
+                    </select>
+                    <button class="btn btn-create" onclick="createApiKey()">Create API Key</button>
+                </div>
+            </div>
+
+            <div class="container">
+                <h3>Manage API Key</h3>
+                <div class="input-group">
+                    <input type="text" id="apiKeyInput" placeholder="Enter API Key">
+                    <button class="btn btn-refresh" onclick="loadApiKey()">Load Key Stats</button>
+                </div>
+                <div id="currentApiKey" class="api-key-card">
+                    <div class="status-indicator status-idle"></div>
+                    No API key loaded
+                </div>
+            </div>
+
+            <div class="container">
+                <h3>Find My Keys by Email</h3>
+                <div class="input-group">
+                    <input type="email" id="lookupEmail" placeholder="Enter your email to list keys">
+                    <button class="btn btn-refresh" onclick="loadUserKeys()">Find Keys</button>
+                </div>
+                <div id="userKeysList"></div>
+            </div>
+        </div>
+
+        <div id="usage" class="tab-content">
+            <div class="container">
+                <h3>🚀 Start SaaS Job</h3>
+                <div class="input-group">
+                    <input type="text" id="saasCity" placeholder="City" value="pune">
+                    <input type="text" id="saasKeyword" placeholder="Keyword" value="restaurants">
+                    <select id="saasMethod">
+                        <option value="api">API</option>
+                        <option value="web">Web Scraper</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <select id="sheetSelection">
+                        <option value="">Select existing sheet...</option>
+                    </select>
+                    <input type="text" id="newSheetName" placeholder="Or create new sheet name">
+                    <button class="btn btn-start" onclick="startSaasJob()">🚀 Start SaaS Job</button>
+                </div>
+                
+                <div class="input-group">
+                    <button class="btn btn-refresh" onclick="loadUserSheets()">📊 Load My Sheets</button>
+                    <button class="btn btn-refresh" onclick="loadUserJobs()">📈 Load My Jobs</button>
+                </div>
+            </div>
+            
+            <div class="container" id="userSheetsContainer" style="display: none;">
+                <h3>📊 My Connected Sheets</h3>
+                <div id="userSheetsList"></div>
+            </div>
+            
+            <div class="container" id="userJobsContainer" style="display: none;">
+                <h3>📈 My Job History</h3>
+                <div id="userJobsStats" class="stats-grid" style="margin-bottom: 20px;"></div>
+                <div id="userJobsList"></div>
+            </div>
+
+            <div class="container">
+                <h3>Job Status</h3>
+                <div id="saasJobStatus" class="status-card">
+                    <div class="status-indicator status-idle"></div>
+                    No active job
+                </div>
+                <div class="input-group">
+                    <button class="btn btn-refresh" onclick="refreshSaasStatus()">🔄 Refresh Status</button>
+                    <button class="btn btn-refresh" id="pauseSaasBtn" onclick="pauseSaasJob()" disabled>⏸️ Pause</button>
+                    <button class="btn btn-refresh" id="resumeSaasBtn" onclick="resumeSaasJob()" disabled>▶️ Resume</button>
+                    <button class="btn btn-refresh" id="stopSaasBtn" onclick="stopSaasJob()" disabled>⏹️ Stop</button>
+                </div>
+
+                <div id="saasProgressContainer" style="display: none;">
+                    <div style="width: 100%; height: 20px; background: #e9ecef; border-radius: 10px; overflow: hidden; margin: 10px 0;">
+                        <div id="saasProgressFill" style="height: 100%; background: linear-gradient(90deg, #28a745, #20c997); transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; width: 0%">0%</div>
+                    </div>
+                </div>
+
+                <div id="saasStatsGrid" style="display:none; margin-top: 10px;">
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                        <div style="background:#f8f9fa; padding:12px; border-radius:6px; text-align:center;">
+                            <div style="font-size:22px; font-weight:700; color:#007bff;" id="phrasesProcessed">0</div>
+                            <div style="font-size:12px; color:#6c757d;">Phrases Processed</div>
+                        </div>
+                        <div style="background:#f8f9fa; padding:12px; border-radius:6px; text-align:center;">
+                            <div style="font-size:22px; font-weight:700; color:#007bff;" id="businessesFound">0</div>
+                            <div style="font-size:12px; color:#6c757d;">Businesses Found</div>
+                        </div>
+                        <div style="background:#f8f9fa; padding:12px; border-radius:6px; text-align:center;">
+                            <div style="font-size:22px; font-weight:700; color:#007bff;" id="businessesSaved">0</div>
+                            <div style="font-size:12px; color:#6c757d;">Businesses Saved</div>
+                        </div>
+                        <div style="background:#f8f9fa; padding:12px; border-radius:6px; text-align:center;">
+                            <div style="font-size:22px; font-weight:700; color:#007bff;" id="saveSuccessRate">0%</div>
+                            <div style="font-size:12px; color:#6c757d;">Save Success Rate</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="activity" class="tab-content">
+            <div class="container">
+                <h3>Activity Log</h3>
+                <div id="activityLog" class="log-container">
+                    <div>Ready to start API key management...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentApiKeyData = null;
+        let currentSaasJobId = null;
+
+        window.onload = function () {
+            logActivity('🚀 SaaS Dashboard loaded');
+        };
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        async function createApiKey() {
+            const userEmail = document.getElementById('userEmail').value.trim();
+            const planType = document.getElementById('planType').value;
+
+            if (!userEmail) {
+                logActivity('❌ Please enter a user email', 'error');
+                return;
+            }
+
+            try {
+                logActivity(`🔑 Creating API key for ${userEmail}`, 'success');
+                const response = await fetch('/api-keys/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userEmail, planType })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    logActivity(`✅ API key created successfully`, 'success');
+                    displayApiKey(result.data);
+                    document.getElementById('apiKeyInput').value = result.data.apiKey;
+                } else {
+                    logActivity(`❌ Failed: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                logActivity(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function displayApiKey(apiKeyData) {
+            const container = document.getElementById('currentApiKey');
+            container.innerHTML = `
+                <button class="copy-btn" onclick="copyApiKey('${apiKeyData.apiKey}')">Copy</button>
+                <div class="status-indicator status-active"></div>
+                <strong>API Key Created</strong><br>
+                <div class="api-key-display">${apiKeyData.apiKey}</div>
+                <strong>Email:</strong> ${apiKeyData.userEmail}<br>
+                <strong>Plan:</strong> ${apiKeyData.planType}<br>
+                <strong>Usage Limit:</strong> ${apiKeyData.usageLimit}<br>
+                <strong>Rate Limit:</strong> ${apiKeyData.rateLimit}/min
+            `;
+        }
+
+        async function loadApiKey() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey) {
+                logActivity('❌ Please enter an API key', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api-keys/${apiKey}/stats`);
+                const result = await response.json();
+
+                if (response.ok) {
+                    currentApiKeyData = result.data;
+                    displayApiKeyStats(result.data);
+                    logActivity(`✅ API key loaded`, 'success');
+                } else {
+                    logActivity(`❌ Failed: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                logActivity(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadUserKeys() {
+            const email = document.getElementById('lookupEmail').value.trim();
+            if (!email) {
+                logActivity('❌ Please enter an email to lookup keys', 'error');
+                return;
+            }
+            try {
+                const resp = await fetch(`/api-keys/user/${encodeURIComponent(email)}`);
+                const result = await resp.json();
+                if (!resp.ok) {
+                    logActivity(`❌ Lookup failed: ${result.message || 'error'}`, 'error');
+                    return;
+                }
+                const list = document.getElementById('userKeysList');
+                if (!result.data || !Array.isArray(result.data.apiKeys) || result.data.apiKeys.length === 0) {
+                    list.innerHTML = '<div>No keys found for this email.</div>';
+                    return;
+                }
+                list.innerHTML = result.data.apiKeys.map(k => `
+                    <div class="api-key-card">
+                        <button class="copy-btn" onclick="copyApiKey('${k.apiKey}')">Copy</button>
+                        <div class="status-indicator ${k.isActive ? 'status-active' : 'status-idle'}"></div>
+                        <strong>${k.planType.toUpperCase()} Plan</strong><br>
+                        <div class="api-key-display">${k.apiKey}</div>
+                        <strong>Key Format:</strong> ${keyFormatInfo(k.apiKey)}<br>
+                        <strong>Usage:</strong> ${k.usage.current}/${k.usage.limit} (${k.usage.percentage}%)<br>
+                        <strong>Rate Limit:</strong> ${k.rateLimit}/min<br>
+                        <strong>Status:</strong> ${k.isActive ? 'Active' : 'Inactive'}
+                    </div>
+                `).join('');
+                logActivity(`✅ Loaded ${result.data.apiKeys.length} keys for ${email}`, 'success');
+            } catch (e) {
+                logActivity(`❌ Error loading user keys: ${e.message}`, 'error');
+            }
+        }
+
+        function displayApiKeyStats(data) {
+            const container = document.getElementById('currentApiKey');
+            const statusClass = data.isActive ? 'status-active' : 'status-idle';
+            
+            container.innerHTML = `
+                <button class="copy-btn" onclick="copyApiKey('${data.apiKey}')">Copy</button>
+                <div class="status-indicator ${statusClass}"></div>
+                <strong>API Key Stats</strong><br>
+                <div class="api-key-display">${data.apiKey}</div>
+                <strong>Key Format:</strong> ${keyFormatInfo(data.apiKey)}<br>
+                <strong>Email:</strong> ${data.userEmail}<br>
+                <strong>Plan:</strong> ${data.planType.toUpperCase()}<br>
+                <strong>Usage:</strong> ${data.usage.current}/${data.usage.limit}<br>
+                <strong>Rate Limit:</strong> ${data.rateLimit}/min<br>
+                <strong>Status:</strong> ${data.isActive ? 'Active' : 'Inactive'}
+            `;
+        }
+
+        // OAuth Functions
+        async function connectOAuth() {
+            const userEmail = document.getElementById('oauthUserEmail').value.trim();
+            if (!userEmail) {
+                logActivity('❌ Please enter your email address', 'error');
+                return;
+            }
+
+            try {
+                logActivity(`🔗 Connecting Google Sheets for: ${userEmail}`, 'info');
+                // Redirect to OAuth flow with SaaS dashboard redirect
+                window.location.href = `/multi-tenant-sheets/auth/connect?userEmail=${encodeURIComponent(userEmail)}&redirect_to=saas-dashboard`;
+            } catch (error) {
+                logActivity(`❌ OAuth connection error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkOAuthStatus() {
+            const userEmail = document.getElementById('oauthUserEmail').value.trim();
+            if (!userEmail) {
+                logActivity('❌ Please enter your email address', 'error');
+                return;
+            }
+
+            try {
+                const [authRes, sheetsRes, keysRes] = await Promise.all([
+                    fetch(`/multi-tenant-sheets/auth/status?userEmail=${encodeURIComponent(userEmail)}`),
+                    fetch(`/multi-tenant-sheets/connected?userEmail=${encodeURIComponent(userEmail)}`),
+                    fetch(`/api-keys/user/${encodeURIComponent(userEmail)}`)
+                ]);
+                
+                const authData = await authRes.json();
+                const sheetsData = await sheetsRes.json();
+                const keysData = await keysRes.json();
+                
+                updateOAuthStatus(authData, sheetsData, keysData, userEmail);
+                
+            } catch (error) {
+                logActivity(`❌ Error checking OAuth status: ${error.message}`, 'error');
+            }
+        }
+
+        function updateOAuthStatus(authData, sheetsData, keysData, userEmail) {
+            const statusDiv = document.getElementById('oauthStatus');
+            const sheetsSection = document.getElementById('connectedSheetsSection');
+            const apiKeySection = document.getElementById('autoApiKeySection');
+            const sheetsList = document.getElementById('connectedSheetsList');
+            const autoApiKeyDiv = document.getElementById('autoApiKey');
+            
+            const isConnected = authData.success && authData.isConnected;
+            const sheets = sheetsData.success ? sheetsData.sheets : [];
+            const apiKeys = keysData.success && keysData.data ? keysData.data.apiKeys : [];
+            
+            if (isConnected) {
+                statusDiv.innerHTML = `
+                    <div class="status-indicator status-active"></div>
+                    <strong>✅ Google Sheets Connected</strong><br>
+                    User: ${userEmail}<br>
+                    Sheets: ${sheets.length} connected<br>
+                    API Keys: ${apiKeys.length} generated
+                `;
+                
+                // Show connected sheets
+                if (sheets.length > 0) {
+                    sheetsSection.style.display = 'block';
+                    sheetsList.innerHTML = sheets.map(sheet => `
+                        <div class="status-card">
+                            <strong>${sheet.sheet_name}</strong><br>
+                            ID: ${sheet.sheet_id}<br>
+                            <a href="${sheet.web_view_link}" target="_blank">📊 Open Sheet</a>
+                        </div>
+                    `).join('');
+                }
+                
+                // Show auto-generated API key
+                if (apiKeys.length > 0) {
+                    apiKeySection.style.display = 'block';
+                    const latestKey = apiKeys[0];
+                    autoApiKeyDiv.innerHTML = `
+                        <button class="copy-btn" onclick="copyApiKey('${latestKey.api_key}')">Copy</button>
+                        <div class="status-indicator status-active"></div>
+                        <strong>🔑 Auto-Generated API Key</strong><br>
+                        <div class="api-key-display">${latestKey.api_key}</div>
+                        <strong>Plan:</strong> ${latestKey.plan_type.toUpperCase()}<br>
+                        <strong>Usage:</strong> ${latestKey.usage_count}/${latestKey.usage_limit}<br>
+                        <strong>Rate Limit:</strong> ${latestKey.rate_limit_per_minute}/min
+                    `;
+                    
+                    // Auto-populate API key in usage tab
+                    document.getElementById('apiKeyInput').value = latestKey.api_key;
+                }
+                
+                logActivity(`✅ OAuth status updated for ${userEmail}`, 'success');
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="status-indicator status-idle"></div>
+                    <strong>❌ Not Connected</strong><br>
+                    Click "Connect Google Sheets" to start OAuth flow
+                `;
+                sheetsSection.style.display = 'none';
+                apiKeySection.style.display = 'none';
+            }
+        }
+
+        // Enhanced SaaS job functions
+        async function loadUserSheets() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey) {
+                logActivity('❌ Please load an API key first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/user/sheets', {
+                    headers: { 'Authorization': `Bearer ${apiKey}` }
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayUserSheets(data.sheets);
+                    populateSheetSelection(data.sheets);
+                    logActivity(`✅ Loaded ${data.sheets.length} sheets`, 'success');
+                } else {
+                    logActivity(`❌ Failed to load sheets: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                logActivity(`❌ Error loading sheets: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadUserJobs() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey) {
+                logActivity('❌ Please load an API key first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/user/jobs', {
+                    headers: { 'Authorization': `Bearer ${apiKey}` }
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayUserJobs(data.jobs, data.statistics);
+                    logActivity(`✅ Loaded ${data.jobs.length} jobs`, 'success');
+                } else {
+                    logActivity(`❌ Failed to load jobs: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                logActivity(`❌ Error loading jobs: ${error.message}`, 'error');
+            }
+        }
+
+        function displayUserSheets(sheets) {
+            const container = document.getElementById('userSheetsContainer');
+            const sheetsList = document.getElementById('userSheetsList');
+            
+            if (sheets.length === 0) {
+                sheetsList.innerHTML = '<div class="status-card">No sheets connected</div>';
+            } else {
+                sheetsList.innerHTML = sheets.map(sheet => `
+                    <div class="status-card">
+                        <strong>${sheet.sheet_name}</strong><br>
+                        ID: ${sheet.sheet_id}<br>
+                        <a href="${sheet.web_view_link}" target="_blank">📊 Open Sheet</a>
+                    </div>
+                `).join('');
+            }
+            
+            container.style.display = 'block';
+        }
+
+        function displayUserJobs(jobs, stats) {
+            const container = document.getElementById('userJobsContainer');
+            const statsDiv = document.getElementById('userJobsStats');
+            const jobsList = document.getElementById('userJobsList');
+            
+            // Display statistics
+            statsDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${stats.totalJobs}</div>
+                    <div class="stat-label">Total Jobs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.completedJobs}</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.totalBusinessesFound.toLocaleString()}</div>
+                    <div class="stat-label">Businesses Found</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.totalBusinessesSaved.toLocaleString()}</div>
+                    <div class="stat-label">Businesses Saved</div>
+                </div>
+            `;
+            
+            // Display job list
+            if (jobs.length === 0) {
+                jobsList.innerHTML = '<div class="status-card">No jobs found</div>';
+            } else {
+                jobsList.innerHTML = jobs.map(job => `
+                    <div class="status-card">
+                        <div class="status-indicator ${job.status === 'completed' ? 'status-active' : job.status === 'failed' ? 'status-idle' : 'status-warning'}"></div>
+                        <strong>Job ${job.jobId}</strong><br>
+                        <strong>Query:</strong> ${job.city} + ${job.keyword}<br>
+                        <strong>Status:</strong> ${job.status.toUpperCase()}<br>
+                        <strong>Started:</strong> ${new Date(job.startTime).toLocaleString()}<br>
+                        ${job.results ? `
+                            <strong>Results:</strong> ${job.results.businessesFound} found, ${job.results.businessesSaved} saved<br>
+                            <strong>Duration:</strong> ${Math.round(job.duration / 1000)}s
+                        ` : ''}
+                        ${job.errorMessage ? `<br><strong>Error:</strong> ${job.errorMessage}` : ''}
+                    </div>
+                `).join('');
+            }
+            
+            container.style.display = 'block';
+        }
+
+        function populateSheetSelection(sheets) {
+            const select = document.getElementById('sheetSelection');
+            select.innerHTML = '<option value="">Select existing sheet...</option>';
+            
+            sheets.forEach(sheet => {
+                const option = document.createElement('option');
+                option.value = sheet.sheet_id;
+                option.textContent = sheet.sheet_name;
+                select.appendChild(option);
+            });
+        }
+
+        </script>
+        <div id="admin" class="tab-content">
+            <div class="container">
+                <h3>All API Keys</h3>
+                <div class="input-group">
+                    <button class="btn btn-refresh" onclick="loadAdminKeys()">Load All Keys</button>
+                </div>
+                <div id="adminKeys"></div>
+            </div>
+
+            <div class="container">
+                <h3>Users Summary</h3>
+                <div class="input-group">
+                    <button class="btn btn-refresh" onclick="loadAdminUsers()">Load Users Summary</button>
+                </div>
+                <div id="adminUsers"></div>
+            </div>
+        </div>
+        <script>
+
+        async function startSaasJob() {
+            const city = document.getElementById('saasCity').value.trim();
+            const keyword = document.getElementById('saasKeyword').value.trim();
+            const method = document.getElementById('saasMethod').value;
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const sheetId = document.getElementById('sheetSelection').value;
+            const newSheetName = document.getElementById('newSheetName').value.trim();
+
+            if (!city || !keyword || !apiKey) {
+                logActivity('❌ Please fill in all required fields', 'error');
+                return;
+            }
+
+            if (!sheetId && !newSheetName) {
+                logActivity('❌ Please select an existing sheet or enter a new sheet name', 'error');
+                return;
+            }
+
+            try {
+                logActivity(`🚀 Starting SaaS job: ${city} + ${keyword}`, 'info');
+                
+                const requestBody = {
+                    city: city,
+                    keyword: keyword,
+                    method: method,
+                    scraper: 'google_maps'
+                };
+
+                // Add sheet configuration
+                if (sheetId) {
+                    requestBody.sheetId = sheetId;
+                } else if (newSheetName) {
+                    requestBody.createNewSheet = true;
+                    requestBody.sheetName = newSheetName;
+                }
+                
+                const response = await fetch('/api/v1/search-service', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    logActivity(`✅ SaaS job started successfully! Job ID: ${data.jobId}`, 'success');
+                    updateSaasJobStatus(data);
+                    
+                    // Clear new sheet name after successful job start
+                    if (newSheetName) {
+                        document.getElementById('newSheetName').value = '';
+                        // Refresh sheets list to include the new sheet
+                        setTimeout(() => loadUserSheets(), 2000);
+                    }
+                } else {
+                    logActivity(`❌ Failed to start SaaS job: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                logActivity(`❌ Error starting SaaS job: ${error.message}`, 'error');
+            }
+        }
+
+        async function refreshSaasStatus() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey || !currentSaasJobId) return;
+
+            try {
+                const response = await fetch(`/api/v1/status/${currentSaasJobId}`, {
+                    headers: { 'Authorization': `Bearer ${apiKey}` }
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    updateSaasJobStatus(result);
+                }
+            } catch (error) {
+                logActivity(`❌ Error refreshing: ${error.message}`, 'error');
+            }
+        }
+
+        function updateSaasJobStatus(job) {
+            const statusDiv = document.getElementById('saasJobStatus');
+            const pauseBtn = document.getElementById('pauseSaasBtn');
+            const resumeBtn = document.getElementById('resumeSaasBtn');
+            const stopBtn = document.getElementById('stopSaasBtn');
+            const progressContainer = document.getElementById('saasProgressContainer');
+            const progressFill = document.getElementById('saasProgressFill');
+            const statsGrid = document.getElementById('saasStatsGrid');
+            if (!job) {
+                statusDiv.innerHTML = '<div class="status-indicator status-idle"></div>No active job';
+                pauseBtn.disabled = true; resumeBtn.disabled = true; stopBtn.disabled = true;
+                progressContainer.style.display = 'none';
+                statsGrid.style.display = 'none';
+                return;
+            }
+
+            const statusClass = job.status === 'started' ? 'status-active' : 'status-idle';
+            statusDiv.innerHTML = `
+                <div class="status-indicator ${statusClass}"></div>
+                <strong>SaaS Job ${job.jobId}</strong><br>
+                Status: ${job.status.toUpperCase()}<br>
+                City: ${job.city} | Keyword: ${job.keyword}<br>
+                ${job.apiKey ? `Plan: ${job.apiKey.plan.toUpperCase()}<br>Remaining: ${job.apiKey.remainingRequests}` : ''}
+            `;
+
+            // Controls
+            pauseBtn.disabled = job.status !== 'started';
+            resumeBtn.disabled = job.status !== 'paused';
+            stopBtn.disabled = !(job.status === 'started' || job.status === 'paused');
+
+            // Progress and stats
+            const progressPct = job.progress && typeof job.progress.phrasesProgress === 'number' ? job.progress.phrasesProgress : 0;
+            progressContainer.style.display = 'block';
+            progressFill.style.width = `${progressPct}%`;
+            progressFill.textContent = `${progressPct}%`;
+
+            statsGrid.style.display = 'block';
+            const processed = job.progress?.processedPhrases ?? 0;
+            const total = job.progress?.totalPhrases ?? 0;
+            const totalBiz = job.progress?.totalBusinesses ?? 0;
+            const savedBiz = job.progress?.savedBusinesses ?? 0;
+            const rate = job.progress?.saveSuccessRate ?? (totalBiz > 0 ? Math.round((savedBiz / totalBiz) * 100) : 0);
+            document.getElementById('phrasesProcessed').textContent = `${processed}/${total}`;
+            document.getElementById('businessesFound').textContent = totalBiz;
+            document.getElementById('businessesSaved').textContent = savedBiz;
+            document.getElementById('saveSuccessRate').textContent = `${rate}%`;
+        }
+
+        async function pauseSaasJob() {
+            if (!currentSaasJobId) return;
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            try {
+                const resp = await fetch(`/api/v1/jobs/${currentSaasJobId}/pause`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${apiKey}` }
+                });
+                const result = await resp.json();
+                if (result.success) logActivity('⏸️ Job paused', 'warning'); else logActivity(`❌ Pause failed: ${result.message}`, 'error');
+                refreshSaasStatus();
+            } catch (e) { logActivity(`❌ Error pausing: ${e.message}`, 'error'); }
+        }
+
+        async function resumeSaasJob() {
+            if (!currentSaasJobId) return;
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            try {
+                const resp = await fetch(`/api/v1/jobs/${currentSaasJobId}/resume`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${apiKey}` }
+                });
+                const result = await resp.json();
+                if (result.success) logActivity('▶️ Job resumed', 'success'); else logActivity(`❌ Resume failed: ${result.message}`, 'error');
+                refreshSaasStatus();
+            } catch (e) { logActivity(`❌ Error resuming: ${e.message}`, 'error'); }
+        }
+
+        async function stopSaasJob() {
+            if (!currentSaasJobId) return;
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            try {
+                const resp = await fetch(`/api/v1/jobs/${currentSaasJobId}/stop`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${apiKey}` }
+                });
+                const result = await resp.json();
+                if (result.success) logActivity('⏹️ Job stop requested', 'warning'); else logActivity(`❌ Stop failed: ${result.message}`, 'error');
+                refreshSaasStatus();
+            } catch (e) { logActivity(`❌ Error stopping: ${e.message}`, 'error'); }
+        }
+
+        function copyApiKey(apiKey) {
+            navigator.clipboard.writeText(apiKey).then(() => {
+                logActivity('📋 API key copied', 'success');
+            }).catch(() => {
+                logActivity('❌ Copy failed', 'error');
+            });
+        }
+
+        // Helper: derive displayable key format/version information
+        function keyFormatInfo(key) {
+            const prefix = key.startsWith('pk_') ? 'pk_' : '(no prefix)';
+            const core = key.startsWith('pk_') ? key.slice(3) : key;
+            const hexLike = /^[0-9a-f]+$/i.test(core);
+            const hexLen = core.length;
+            // Treat current generator as: pk_ + 56 hex (from 28 random bytes)
+            const looksLikeV2 = prefix === 'pk_' && hexLike && hexLen === 56;
+            if (looksLikeV2) return 'v2 · pk_ + 56 hex (59 chars)';
+            return `${prefix} + ${hexLen} chars${hexLike ? ' hex' : ''} (${key.length} total)`;
+        }
+
+        // Admin loaders
+        async function loadAdminKeys() {
+            try {
+                const resp = await fetch('/api-keys/admin/keys');
+                const json = await resp.json();
+                if (!resp.ok) { logActivity(`❌ Admin keys failed: ${json.message || 'error'}`, 'error'); return; }
+                const keys = json.data?.keys || [];
+                const html = keys.map(k => `
+                    <div class="api-key-card">
+                        <button class="copy-btn" onclick="copyApiKey('${k.apiKey}')">Copy</button>
+                        <div class="status-indicator ${k.isActive ? 'status-active' : 'status-idle'}"></div>
+                        <strong>${k.userEmail}</strong> · ${k.planType.toUpperCase()} · RL ${k.rateLimit}/min<br>
+                        <div class="api-key-display">${k.apiKey}</div>
+                        <strong>Key Format:</strong> ${keyFormatInfo(k.apiKey)}<br>
+                        <strong>Usage:</strong> ${k.usage.current}/${k.usage.limit} (${k.usage.percentage}%) · Remaining: ${k.usage.remaining}<br>
+                        <strong>Status:</strong> ${k.isActive ? 'Active' : 'Inactive'}
+                        ${k.expiresAt ? `<br><strong>Expires:</strong> ${new Date(k.expiresAt).toLocaleString()}` : ''}
+                        ${k.lastUsedAt ? `<br><strong>Last Used:</strong> ${new Date(k.lastUsedAt).toLocaleString()}` : ''}
+                    </div>
+                `).join('');
+                document.getElementById('adminKeys').innerHTML = html || '<div>No keys.</div>';
+                logActivity(`✅ Loaded ${keys.length} admin keys`, 'success');
+            } catch (e) {
+                logActivity(`❌ Error loading admin keys: ${e.message}`, 'error');
+            }
+        }
+
+        async function loadAdminUsers() {
+            try {
+                const resp = await fetch('/api-keys/admin/users');
+                const json = await resp.json();
+                if (!resp.ok) { logActivity(`❌ Admin users failed: ${json.message || 'error'}`, 'error'); return; }
+                const users = json.data?.users || [];
+                const html = users.map(u => `
+                    <div class="status-card">
+                        <strong>${u.userEmail}</strong><br>
+                        Keys: ${u.activeKeys}/${u.totalKeys} active · Usage: ${u.totalUsage}/${u.totalLimit} · Max RL: ${u.maxRateLimit}/min<br>
+                        ${u.nearestExpiry ? `Nearest Expiry: ${new Date(u.nearestExpiry).toLocaleString()} · ` : ''}
+                        ${u.lastActivity ? `Last Activity: ${new Date(u.lastActivity).toLocaleString()}` : 'No activity'}
+                    </div>
+                `).join('');
+                document.getElementById('adminUsers').innerHTML = html || '<div>No users.</div>';
+                logActivity(`✅ Loaded ${users.length} user summaries`, 'success');
+            } catch (e) {
+                logActivity(`❌ Error loading admin users: ${e.message}`, 'error');
+            }
+        }
+
+        function logActivity(message, type = 'info') {
+            const log = document.getElementById('activityLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            log.appendChild(logEntry);
+            log.scrollTop = log.scrollHeight;
+
+            while (log.children.length > 50) {
+                log.removeChild(log.firstChild);
+            }
+        }
+    </script>
+</body>
+</html>

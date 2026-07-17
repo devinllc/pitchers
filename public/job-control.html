@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Business Scraper - Job Control</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .job-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-start {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-pause {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-resume {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-stop {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-refresh {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-card {
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .time-estimates {
+            background: #e3f2fd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .error {
+            color: #dc3545;
+        }
+
+        .success {
+            color: #28a745;
+        }
+
+        .warning {
+            color: #ffc107;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .input-group input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-running {
+            background: #28a745;
+        }
+
+        .status-paused {
+            background: #ffc107;
+        }
+
+        .status-stopped {
+            background: #dc3545;
+        }
+
+        .status-idle {
+            background: #6c757d;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Local Business Scraper</h1>
+            <p>Job Control Dashboard</p>
+        </div>
+
+        <!-- Start New Job -->
+        <div class="container">
+            <h3>Start New Job</h3>
+            <div class="input-group">
+                <input type="text" id="city" placeholder="City (e.g., pune)" value="pune">
+                <input type="text" id="keyword" placeholder="Keyword (e.g., computer classes)" value="computer classes">
+                <select id="method" title="Data source method">
+                    <option value="api">API</option>
+                    <option value="web">Web Scraper</option>
+                </select>
+                <input type="number" id="maxResults" placeholder="maxResults (e.g., 50)" min="1" max="500" style="width:160px">
+                <input type="number" id="maxScrollPages" placeholder="maxScrollPages (e.g., 5)" min="0" max="50" style="width:180px">
+                <input type="number" id="phraseCount" placeholder="phraseCount (e.g., 100)" min="1" max="1000" style="width:180px">
+                <label style="display:flex;align-items:center;gap:6px">
+                    <input type="checkbox" id="wantWebsite" checked>
+                    Want Website
+                </label>
+                <label style="display:flex;align-items:center;gap:6px">
+                    <input type="checkbox" id="wantEmail" checked>
+                    Want Email
+                </label>
+                <label style="display:flex;align-items:center;gap:6px">
+                    <input type="checkbox" id="emailDeepPaths" checked>
+                    Email Deep Paths
+                </label>
+                <label style="display:flex;align-items:center;gap:6px">
+                    <input type="checkbox" id="headless" checked>
+                    Headless
+                </label>
+                <button class="btn btn-start" onclick="startJob()">Start Job</button>
+            </div>
+        </div>
+
+        <!-- Job Controls -->
+        <div class="container">
+            <h3>Job Controls</h3>
+            <div class="job-controls">
+                <button class="btn btn-pause" id="pauseBtn" onclick="pauseJob()" disabled>⏸️ Pause</button>
+                <button class="btn btn-resume" id="resumeBtn" onclick="resumeJob()" disabled>▶️ Resume</button>
+                <button class="btn btn-stop" id="stopBtn" onclick="stopJob()" disabled>⏹️ Stop</button>
+                <button class="btn btn-refresh" onclick="refreshStatus()">🔄 Refresh</button>
+            </div>
+        </div>
+
+        <!-- Job Status -->
+        <div class="container">
+            <h3>Current Job Status</h3>
+            <div id="jobStatus" class="status-card">
+                <div class="status-indicator status-idle"></div>
+                No active job
+            </div>
+
+            <div id="progressContainer" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+                </div>
+            </div>
+
+            <div id="timeEstimates" class="time-estimates" style="display: none;">
+                <h4>⏱️ Time Estimates</h4>
+                <div id="timeEstimatesContent"></div>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="container">
+            <h3>Statistics</h3>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-item">
+                    <div class="stat-value" id="phrasesProcessed">0</div>
+                    <div class="stat-label">Phrases Processed</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="businessesFound">0</div>
+                    <div class="stat-label">Businesses Found</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="businessesSaved">0</div>
+                    <div class="stat-label">Businesses Saved</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="saveSuccessRate">0%</div>
+                    <div class="stat-label">Save Success Rate</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="container">
+            <h3>Activity Log</h3>
+            <div id="activityLog" class="log-container">
+                <div>Ready to start processing...</div>
+            </div>
+        </div>
+
+        <!-- Google Sheets OAuth -->
+        <div class="container">
+            <h3>Google Sheets: Multi-Tenant Connect</h3>
+            <div class="input-group">
+                <input type="email" id="userEmail" placeholder="Enter your email" style="padding: 10px; margin-right: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                <button class="btn btn-resume" onclick="connectMultiTenantSheets()">🔐 Connect Google Sheets</button>
+                <button class="btn btn-refresh" onclick="checkMultiTenantStatus()">🔄 Check Status</button>
+                <button class="btn btn-stop" onclick="disconnectMultiTenantSheets()">🔌 Disconnect</button>
+            </div>
+            <div id="oauthStatus" class="status-card" style="display:none"></div>
+            
+            <!-- Connected Sheets -->
+            <div id="connectedSheetsSection" style="margin-top: 20px; display: none;">
+                <h4>Connected Sheets:</h4>
+                <div id="connectedSheetsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentJobId = null;
+        let refreshInterval = null;
+
+        // Start auto-refresh when page loads
+        window.onload = function () {
+            refreshStatus();
+            startAutoRefresh();
+        };
+
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = setInterval(refreshStatus, 2000); // Refresh every 2 seconds
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+
+        async function startJob() {
+            const city = document.getElementById('city').value.trim();
+            const keyword = document.getElementById('keyword').value.trim();
+            const method = document.getElementById('method').value;
+            const maxResultsVal = document.getElementById('maxResults').value;
+            const maxScrollPagesVal = document.getElementById('maxScrollPages').value;
+            const phraseCountVal = document.getElementById('phraseCount').value;
+            const headless = document.getElementById('headless').checked;
+            const wantWebsite = document.getElementById('wantWebsite').checked;
+            const wantEmail = document.getElementById('wantEmail').checked;
+            const emailDeepPaths = document.getElementById('emailDeepPaths').checked;
+
+            if (!city || !keyword) {
+                logActivity('❌ Please enter both city and keyword', 'error');
+                return;
+            }
+
+            try {
+                logActivity(`🚀 Starting job: ${city} + ${keyword}`, 'success');
+
+                const payload = { city, keyword, method };
+                // Always pass scraper options so both API and Web paths can honor per-phrase limits
+                payload.scraper = {};
+                if (maxResultsVal) payload.scraper.maxResults = parseInt(maxResultsVal, 10);
+                if (maxScrollPagesVal) payload.scraper.maxScrollPages = parseInt(maxScrollPagesVal, 10);
+                payload.scraper.headless = !!headless;
+                payload.scraper.wantWebsite = !!wantWebsite;
+                payload.scraper.wantEmail = !!wantEmail;
+                payload.scraper.emailDeepPaths = !!emailDeepPaths;
+                if (phraseCountVal) {
+                    payload.phrases = { maxPhrases: parseInt(phraseCountVal, 10) };
+                }
+
+                const response = await fetch('/search-service', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    currentJobId = result.jobId;
+                    logActivity(`✅ Job started successfully: ${result.jobId}`, 'success');
+                    startAutoRefresh();
+                } else {
+                    logActivity(`❌ Failed to start job: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                logActivity(`❌ Error starting job: ${error.message}`, 'error');
+            }
+        }
+
+        async function pauseJob() {
+            if (!currentJobId) return;
+
+            try {
+                const response = await fetch(`/jobs/${currentJobId}/pause`, { method: 'POST' });
+                const result = await response.json();
+
+                if (result.success) {
+                    logActivity('⏸️ Job paused successfully', 'warning');
+                } else {
+                    logActivity(`❌ Failed to pause job: ${result.message}`, 'error');
+                }
+                refreshStatus();
+            } catch (error) {
+                logActivity(`❌ Error pausing job: ${error.message}`, 'error');
+            }
+        }
+
+        async function resumeJob() {
+            if (!currentJobId) return;
+
+            try {
+                const response = await fetch(`/jobs/${currentJobId}/resume`, { method: 'POST' });
+                const result = await response.json();
+
+                if (result.success) {
+                    logActivity('▶️ Job resumed successfully', 'success');
+                } else {
+                    logActivity(`❌ Failed to resume job: ${result.message}`, 'error');
+                }
+                refreshStatus();
+            } catch (error) {
+                logActivity(`❌ Error resuming job: ${error.message}`, 'error');
+            }
+        }
+
+        async function stopJob() {
+            if (!currentJobId) return;
+
+            try {
+                const response = await fetch(`/jobs/${currentJobId}/stop`, { method: 'POST' });
+                const result = await response.json();
+
+                if (result.success) {
+                    logActivity('⏹️ Job stop requested', 'warning');
+                } else {
+                    logActivity(`❌ Failed to stop job: ${result.message}`, 'error');
+                }
+                refreshStatus();
+            } catch (error) {
+                logActivity(`❌ Error stopping job: ${error.message}`, 'error');
+            }
+        }
+
+        async function refreshStatus() {
+            try {
+                // Get active jobs
+                const jobsResponse = await fetch('/status');
+                const jobsData = await jobsResponse.json();
+
+                if (jobsData.activeJobs && jobsData.activeJobs.length > 0) {
+                    const job = jobsData.activeJobs[0];
+                    currentJobId = job.jobId;
+                    updateJobStatus(job);
+                } else {
+                    // No active jobs
+                    currentJobId = null;
+                    updateJobStatus(null);
+                }
+            } catch (error) {
+                logActivity(`❌ Error refreshing status: ${error.message}`, 'error');
+            }
+        }
+
+        function updateJobStatus(job) {
+            const statusDiv = document.getElementById('jobStatus');
+            const progressContainer = document.getElementById('progressContainer');
+            const timeEstimates = document.getElementById('timeEstimates');
+
+            // Update control buttons
+            const pauseBtn = document.getElementById('pauseBtn');
+            const resumeBtn = document.getElementById('resumeBtn');
+            const stopBtn = document.getElementById('stopBtn');
+
+            if (!job) {
+                statusDiv.innerHTML = '<div class="status-indicator status-idle"></div>No active job';
+                progressContainer.style.display = 'none';
+                timeEstimates.style.display = 'none';
+                pauseBtn.disabled = true;
+                resumeBtn.disabled = true;
+                stopBtn.disabled = true;
+                updateStats(null);
+                return;
+            }
+
+            // Update status display
+            const statusClass = job.status === 'started' ? 'status-running' :
+                job.status === 'paused' ? 'status-paused' : 'status-stopped';
+
+            statusDiv.innerHTML = `
+                <div class="status-indicator ${statusClass}"></div>
+                <strong>Job ${job.jobId}</strong><br>
+                Status: ${job.status.toUpperCase()}<br>
+                City: ${job.city} | Keyword: ${job.keyword}${job.method ? ` | Method: ${job.method}` : ''}<br>
+                Current: ${job.progress.currentPhrase || 'N/A'}
+            `;
+
+            // Update progress bar
+            const progress = job.progress.phrasesProgress || 0;
+            progressContainer.style.display = 'block';
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.width = `${progress}%`;
+            progressFill.textContent = `${progress}%`;
+
+            // Update time estimates
+            if (job.timeEstimates && job.timeEstimates.estimatedTimeRemaining > 0) {
+                timeEstimates.style.display = 'block';
+                const remainingMinutes = Math.round(job.timeEstimates.estimatedTimeRemaining / 60);
+                const completionTime = new Date(job.timeEstimates.estimatedCompletionTime).toLocaleTimeString();
+
+                document.getElementById('timeEstimatesContent').innerHTML = `
+                    <div>⏱️ Estimated time remaining: <strong>${remainingMinutes} minutes</strong></div>
+                    <div>🎯 Estimated completion: <strong>${completionTime}</strong></div>
+                    <div>⚡ Processing speed: <strong>${job.timeEstimates.phrasesPerMinute} phrases/min</strong></div>
+                `;
+            } else {
+                timeEstimates.style.display = 'none';
+            }
+
+            // Update control buttons
+            pauseBtn.disabled = job.status !== 'started';
+            resumeBtn.disabled = job.status !== 'paused';
+            stopBtn.disabled = job.status !== 'started' && job.status !== 'paused';
+
+            // Update statistics
+            updateStats(job);
+        }
+
+        function updateStats(job) {
+            if (!job) {
+                document.getElementById('phrasesProcessed').textContent = '0';
+                document.getElementById('businessesFound').textContent = '0';
+                document.getElementById('businessesSaved').textContent = '0';
+                document.getElementById('saveSuccessRate').textContent = '0%';
+                return;
+            }
+
+            document.getElementById('phrasesProcessed').textContent =
+                `${job.progress.processedPhrases}/${job.progress.totalPhrases}`;
+            document.getElementById('businessesFound').textContent = job.progress.totalBusinesses;
+            document.getElementById('businessesSaved').textContent = job.progress.savedBusinesses;
+            document.getElementById('saveSuccessRate').textContent = `${job.progress.saveSuccessRate}%`;
+        }
+
+        function logActivity(message, type = 'info') {
+            const log = document.getElementById('activityLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+
+            log.appendChild(logEntry);
+            log.scrollTop = log.scrollHeight;
+
+            // Keep only last 50 entries
+            while (log.children.length > 50) {
+                log.removeChild(log.firstChild);
+            }
+        }
+
+        // Multi-tenant OAuth helpers
+        async function connectMultiTenantSheets() {
+            const userEmail = document.getElementById('userEmail').value.trim();
+            if (!userEmail) {
+                logActivity('❌ Please enter your email address', 'error');
+                showOAuthStatus('Please enter your email address', 'error');
+                return;
+            }
+
+            try {
+                logActivity(`➡️ Connecting Google Sheets for: ${userEmail}`, 'info');
+                // Direct navigation to OAuth connect route - no fetch needed
+                window.location.href = `/multi-tenant-sheets/auth/connect?userEmail=${encodeURIComponent(userEmail)}&redirect_to=job-control`;
+            } catch (e) {
+                logActivity(`❌ ${e.message}`, 'error');
+                showOAuthStatus(e.message, 'error');
+            }
+        }
+
+        async function checkMultiTenantStatus() {
+            const userEmail = document.getElementById('userEmail').value.trim();
+            if (!userEmail) {
+                logActivity('❌ Please enter your email address', 'error');
+                showOAuthStatus('Please enter your email address', 'error');
+                return;
+            }
+
+            try {
+                const [authRes, sheetsRes] = await Promise.all([
+                    fetch(`/multi-tenant-sheets/auth/status?userEmail=${encodeURIComponent(userEmail)}`),
+                    fetch(`/multi-tenant-sheets/connected?userEmail=${encodeURIComponent(userEmail)}`)
+                ]);
+                
+                const authData = await authRes.json();
+                const sheetsData = await sheetsRes.json();
+                
+                if (authRes.ok && sheetsRes.ok) {
+                    const parts = [];
+                    parts.push(`Auth: ${authData.isConnected ? 'Connected' : 'Not Connected'}`);
+                    parts.push(`Sheets: ${sheetsData.sheets ? sheetsData.sheets.length : 0} connected`);
+                    
+                    const isFullyConnected = authData.isConnected && sheetsData.sheets && sheetsData.sheets.length > 0;
+                    showOAuthStatus(parts.join(' | '), isFullyConnected ? 'success' : 'warning');
+                    
+                    // Show connected sheets
+                    if (sheetsData.sheets && sheetsData.sheets.length > 0) {
+                        displayConnectedSheets(sheetsData.sheets);
+                    }
+                } else {
+                    throw new Error(authData.message || sheetsData.message || 'Failed to get status');
+                }
+            } catch (e) {
+                logActivity(`❌ ${e.message}`, 'error');
+                showOAuthStatus(e.message, 'error');
+            }
+        }
+
+        async function disconnectMultiTenantSheets() {
+            const userEmail = document.getElementById('userEmail').value.trim();
+            if (!userEmail) {
+                logActivity('❌ Please enter your email address', 'error');
+                showOAuthStatus('Please enter your email address', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/multi-tenant-sheets/auth/disconnect?userEmail=${encodeURIComponent(userEmail)}`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' } 
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    logActivity('🔌 Disconnected Google Sheets', 'warning');
+                    showOAuthStatus('Disconnected from Google Sheets.', 'warning');
+                    document.getElementById('connectedSheetsSection').style.display = 'none';
+                } else {
+                    throw new Error(data.message || 'Failed to disconnect');
+                }
+            } catch (e) {
+                logActivity(`❌ ${e.message}`, 'error');
+                showOAuthStatus(e.message, 'error');
+            }
+        }
+
+        function displayConnectedSheets(sheets) {
+            const section = document.getElementById('connectedSheetsSection');
+            const list = document.getElementById('connectedSheetsList');
+            
+            if (sheets && sheets.length > 0) {
+                list.innerHTML = sheets.map(sheet => `
+                    <div style="padding: 10px; border: 1px solid #ddd; margin: 5px 0; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>${sheet.sheet_name}</strong>
+                            <br><small>ID: ${sheet.sheet_id}</small>
+                        </div>
+                        <div>
+                            <button class="btn btn-resume" onclick="window.open('${sheet.sheet_url}', '_blank')" style="margin-right: 5px;">📊 Open</button>
+                            <button class="btn btn-stop" onclick="disconnectSheet('${sheet.sheet_id}')">🗑️ Remove</button>
+                        </div>
+                    </div>
+                `).join('');
+                section.style.display = 'block';
+            } else {
+                section.style.display = 'none';
+            }
+        }
+
+        async function disconnectSheet(sheetId) {
+            const userEmail = document.getElementById('userEmail').value.trim();
+            if (!userEmail) return;
+
+            try {
+                const res = await fetch(`/multi-tenant-sheets/${sheetId}?userEmail=${encodeURIComponent(userEmail)}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    logActivity(`🗑️ Removed sheet: ${sheetId}`, 'warning');
+                    checkMultiTenantStatus(); // Refresh the list
+                } else {
+                    throw new Error(data.message || 'Failed to remove sheet');
+                }
+            } catch (e) {
+                logActivity(`❌ ${e.message}`, 'error');
+            }
+        }
+
+        // Legacy OAuth helpers (keep for backward compatibility)
+        async function connectSheets() {
+            logActivity('ℹ️ Please use Multi-Tenant Connect above', 'info');
+            showOAuthStatus('Please use Multi-Tenant Connect feature above', 'warning');
+        }
+
+        async function checkSheetsStatus() {
+            logActivity('ℹ️ Please use Multi-Tenant Check Status above', 'info');
+            showOAuthStatus('Please use Multi-Tenant Check Status feature above', 'warning');
+        }
+
+        async function disconnectSheets() {
+            logActivity('ℹ️ Please use Multi-Tenant Disconnect above', 'info');
+            showOAuthStatus('Please use Multi-Tenant Disconnect feature above', 'warning');
+        }
+
+        function showOAuthStatus(message, level) {
+            const box = document.getElementById('oauthStatus');
+            box.style.display = 'block';
+            let extraClass = '';
+            if (level === 'error') extraClass = 'error';
+            else if (level === 'warning') extraClass = 'warning';
+            else extraClass = '';
+            box.className = 'status-card ' + extraClass;
+            box.textContent = message;
+        }
+
+        // If redirected back after OAuth
+        (function checkOAuthQuery() {
+            const params = new URLSearchParams(window.location.search);
+            const status = params.get('oauth');
+            if (status === 'success') {
+                logActivity('✅ Google Sheets connected', 'success');
+                showOAuthStatus('Google Sheets connected successfully.', 'success');
+            } else if (status === 'error') {
+                logActivity('❌ Google Sheets OAuth failed', 'error');
+                showOAuthStatus('Google Sheets OAuth failed. Please retry.', 'error');
+            }
+            // also show current status on load
+            checkSheetsStatus();
+        })();
+    </script>
+</body>
+
+</html>

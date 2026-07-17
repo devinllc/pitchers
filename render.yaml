@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: local-business-scraper
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    runtime: node
+    nodeVersion: 22
+    autoDeploy: true
+    # Resource configuration for stability
+    plan: starter
+    region: oregon
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PUPPETEER_CACHE_DIR
+        value: .cache/puppeteer
+      - key: MAX_CONCURRENT_JOBS
+        value: "1"
+      - key: JOB_TIMEOUT_MINUTES
+        value: "30"
+      - key: ENABLE_MEMORY_MONITORING
+        value: "true"
+      - key: RENDER
+        value: "true"
+      - key: NODE_OPTIONS
+        value: "--expose-gc --max-old-space-size=2048"
+    healthCheckPath: /health
+    disk:
+      name: whatsapp-sessions
+      mountPath: /app/.whatsapp_sessions
+      sizeGB: 2

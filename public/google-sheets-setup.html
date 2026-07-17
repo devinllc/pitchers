@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Sheets OAuth Setup</title>
+  <style>
+    :root { --bg:#0b1324; --panel:#111832; --muted:#8da2b5; --text:#e6eef6; --accent:#4f8cff; --ok:#31c48d; --warn:#f59e0b; --err:#f05252; }
+    html,body{margin:0;height:100%;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji";background:var(--bg);color:var(--text);} 
+    .container{max-width:880px;margin:24px auto;padding:16px;} 
+    .card{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 8px 20px rgba(0,0,0,.25);} 
+    h1{font-size:22px;margin:0 0 8px 0;} h2{font-size:16px;margin:0 0 12px 0;color:var(--muted);} 
+    label{display:block;font-size:12px;color:var(--muted);margin:12px 0 6px;} input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:#0e1730;color:var(--text);} 
+    .row{display:flex;gap:12px;flex-wrap:wrap;} .row .col{flex:1;min-width:220px;} 
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;} 
+    button{background:var(--accent);color:white;border:none;border-radius:8px;padding:10px 14px;font-weight:600;cursor:pointer;} 
+    button.secondary{background:#273352;} button.warn{background:var(--warn);} button.error{background:var(--err);} button.ok{background:var(--ok);} 
+    pre{background:#0a1126;color:#c9e3ff;border:1px solid rgba(255,255,255,.06);padding:12px;border-radius:8px;overflow:auto;max-height:260px;} 
+    .kvs{display:grid;grid-template-columns:200px 1fr;gap:6px;font-size:13px;} .kv{display:contents;} .k{color:var(--muted);} .v{color:#cfe3ff;word-break:break-all;} 
+    a{color:#9ec2ff;text-decoration:none;} a:hover{text-decoration:underline;} 
+    .hint{color:var(--muted);font-size:12px;margin-top:8px;}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Google Sheets OAuth Setup</h1>
+      <h2>Store client, authorize, and manage tokens</h2>
+      <div class="row">
+        <div class="col">
+          <label for="client_id">Client ID</label>
+          <input id="client_id" placeholder="YOUR_GOOGLE_CLIENT_ID" />
+        </div>
+        <div class="col">
+          <label for="client_secret">Client Secret</label>
+          <input id="client_secret" placeholder="YOUR_GOOGLE_CLIENT_SECRET" />
+        </div>
+      </div>
+      <label for="redirect_uri">Redirect URI</label>
+      <input id="redirect_uri" placeholder="http://localhost:3000/oauth/google-sheets/callback" />
+      <div class="btns">
+        <button id="btnSave">Save Client</button>
+        <button id="btnAuthorize" class="ok">Authorize (Google)</button>
+        <button id="btnStatus" class="secondary">Check Status</button>
+        <button id="btnRefresh" class="warn">Refresh Access Token</button>
+        <button id="btnDisconnect" class="error">Disconnect</button>
+      </div>
+      <div class="hint">Tip: Ensure this redirect URI is added in Google Cloud → OAuth Client → Authorized redirect URIs.</div>
+    </div>
+
+    <div class="card">
+      <h2>Responses</h2>
+      <pre id="out">Ready.</pre>
+    </div>
+
+    <div class="card">
+      <h2>Quick Links</h2>
+      <div class="kvs">
+        <div class="kv"><div class="k">Status</div><div class="v"><a href="/oauth/google-sheets/status" target="_blank">/oauth/google-sheets/status</a></div></div>
+        <div class="kv"><div class="k">Authorize (server)</div><div class="v"><a href="/oauth/sheets/authorize" target="_blank">/oauth/sheets/authorize</a></div></div>
+        <div class="kv"><div class="k">Callback (server)</div><div class="v">/oauth/google-sheets/callback</div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const out = document.getElementById('out');
+    const setOut = (obj) => out.textContent = (typeof obj === 'string') ? obj : JSON.stringify(obj, null, 2);
+
+    // Persist fields in localStorage for convenience
+    const fields = ['client_id','client_secret','redirect_uri'];
+    fields.forEach(id => {
+      const el = document.getElementById(id);
+      const v = localStorage.getItem(`sheets_${id}`);
+      if (v) el.value = v;
+      el.addEventListener('input', () => localStorage.setItem(`sheets_${id}`, el.value));
+    });
+
+    async function postJSON(url, body) {
+      const res = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body||{}) });
+      const data = await res.json().catch(() => ({ raw: '(non-JSON response)' }));
+      return { ok: res.ok, status: res.status, data };
+    }
+    async function getJSON(url) {
+      const res = await fetch(url);
+      const data = await res.json().catch(() => ({ raw: '(non-JSON response)' }));
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    // Build Google's auth URL on the client WITHOUT the problematic prompt=consent
+    function buildGoogleAuthUrl({ client_id, redirect_uri, scope }) {
+      const params = new URLSearchParams({
+        client_id,
+        redirect_uri,
+        scope,
+        response_type: 'code',
+        access_type: 'offline'
+        // intentionally omit prompt to avoid Invalid prompt error
+      });
+      return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    }
+
+    document.getElementById('btnSave').addEventListener('click', async () => {
+      const client_id = document.getElementById('client_id').value.trim();
+      const client_secret = document.getElementById('client_secret').value.trim();
+      const redirect_uri = (document.getElementById('redirect_uri').value.trim()) || 'http://localhost:3000/oauth/google-sheets/callback';
+      if (!client_id || !client_secret) { setOut({ error: 'client_id and client_secret are required' }); return; }
+      const resp = await postJSON('/oauth/sheets/setup', { client_id, client_secret, redirect_uri });
+      setOut(resp);
+    });
+
+    document.getElementById('btnAuthorize').addEventListener('click', async () => {
+      const client_id = document.getElementById('client_id').value.trim();
+      const redirect_uri = (document.getElementById('redirect_uri').value.trim()) || 'http://localhost:3000/oauth/google-sheets/callback';
+      if (!client_id) { setOut({ error: 'Provide client_id first (and Save Client).' }); return; }
+      const scope = 'https://www.googleapis.com/auth/spreadsheets';
+      const url = buildGoogleAuthUrl({ client_id, redirect_uri, scope });
+      window.open(url, '_blank');
+      setOut({ message: 'Opened Google consent in new tab', url });
+    });
+
+    document.getElementById('btnStatus').addEventListener('click', async () => {
+      const resp = await getJSON('/oauth/google-sheets/status');
+      setOut(resp);
+    });
+
+    document.getElementById('btnRefresh').addEventListener('click', async () => {
+      const resp = await postJSON('/oauth/google-sheets/refresh', {});
+      setOut(resp);
+    });
+
+    document.getElementById('btnDisconnect').addEventListener('click', async () => {
+      const forgetClient = false; // keep client by default
+      const resp = await postJSON('/oauth/google-sheets/disconnect', { forgetClient });
+      setOut(resp);
+    });
+  </script>
+</body>
+</html>

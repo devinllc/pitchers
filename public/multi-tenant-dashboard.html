@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Tenant Business Scraper Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .status-connected { color: #10b981; }
+        .status-disconnected { color: #ef4444; }
+        .loading { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">Business Scraper Dashboard</h1>
+                    <p class="text-blue-100">Multi-Tenant Google Sheets Management</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <p class="text-sm text-blue-100">Logged in as:</p>
+                        <p class="font-semibold" id="userEmail">Loading...</p>
+                    </div>
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-white"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-6 py-8">
+        <!-- Connection Status -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold mb-2">Google Sheets Connection</h2>
+                    <p class="text-gray-600" id="connectionStatus">Checking connection...</p>
+                </div>
+                <div class="text-right">
+                    <button id="connectBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors">
+                        <i class="fab fa-google mr-2"></i>Connect Google Sheets
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Sheet Management -->
+            <div class="lg:col-span-1">
+                <!-- Connected Sheets -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6 card-hover">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold">
+                            <i class="fas fa-table text-green-600 mr-2"></i>Connected Sheets
+                        </h3>
+                        <button id="refreshSheetsBtn" class="text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div id="connectedSheets" class="space-y-3">
+                        <p class="text-gray-500 text-center py-4">Loading sheets...</p>
+                    </div>
+                    <div class="mt-4 space-y-2">
+                        <button id="createSheetBtn" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors">
+                            <i class="fas fa-plus mr-2"></i>Create New Sheet
+                        </button>
+                        <button id="connectExistingBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">
+                            <i class="fas fa-link mr-2"></i>Connect Existing Sheet
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Data Export -->
+                <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                    <h3 class="text-lg font-semibold mb-4">
+                        <i class="fas fa-download text-purple-600 mr-2"></i>Export Data
+                    </h3>
+                    <div class="space-y-2">
+                        <button id="exportCsvBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition-colors">
+                            <i class="fas fa-file-csv mr-2"></i>Export to CSV
+                        </button>
+                        <button id="exportJsonBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition-colors">
+                            <i class="fas fa-file-code mr-2"></i>Export to JSON
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Job Control & Data -->
+            <div class="lg:col-span-2">
+                <!-- Job Control -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6 card-hover">
+                    <h3 class="text-lg font-semibold mb-4">
+                        <i class="fas fa-play-circle text-blue-600 mr-2"></i>Job Control
+                    </h3>
+                    
+                    <!-- Job Configuration -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Search Keywords</label>
+                            <input type="text" id="searchKeywords" placeholder="e.g., restaurants, cafes, hotels" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                            <input type="text" id="searchLocation" placeholder="e.g., New York, NY" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Scraping Method</label>
+                            <select id="scrapingMethod" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="api">API Method (Fast)</option>
+                                <option value="web">Web Scraping (More Data)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Max Results</label>
+                            <select id="maxResults" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="50">50 results</option>
+                                <option value="100">100 results</option>
+                                <option value="200">200 results</option>
+                                <option value="500">500 results</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Save to Sheet</label>
+                            <select id="targetSheet" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">Select a sheet...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Job Actions -->
+                    <div class="flex space-x-3">
+                        <button id="startJobBtn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-colors">
+                            <i class="fas fa-play mr-2"></i>Start Job
+                        </button>
+                        <button id="pauseJobBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-lg transition-colors" disabled>
+                            <i class="fas fa-pause mr-2"></i>Pause
+                        </button>
+                        <button id="stopJobBtn" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors" disabled>
+                            <i class="fas fa-stop mr-2"></i>Stop
+                        </button>
+                    </div>
+
+                    <!-- Job Status -->
+                    <div id="jobStatus" class="mt-4 p-4 bg-gray-50 rounded-lg hidden">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="font-medium">Job Status: <span id="jobStatusText">Idle</span></p>
+                                <p class="text-sm text-gray-600">Progress: <span id="jobProgress">0/0</span></p>
+                                <p class="text-sm text-gray-600">Method: <span id="jobMethod">-</span></p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-gray-600">Job ID: <span id="jobId">-</span></p>
+                                <p class="text-sm text-gray-600">Started: <span id="jobStartTime">-</span></p>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <div class="bg-gray-200 rounded-full h-2">
+                                <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Save Statistics -->
+                        <div id="saveStats" class="mt-3 grid grid-cols-3 gap-3 text-sm">
+                            <div class="text-center p-2 bg-green-100 rounded">
+                                <div class="font-semibold text-green-700" id="postgresqlStats">0✓/0✗</div>
+                                <div class="text-green-600">PostgreSQL</div>
+                            </div>
+                            <div class="text-center p-2 bg-blue-100 rounded">
+                                <div class="font-semibold text-blue-700" id="sheetsStats">0✓/0✗</div>
+                                <div class="text-blue-600">Google Sheets</div>
+                            </div>
+                            <div class="text-center p-2 bg-purple-100 rounded">
+                                <div class="font-semibold text-purple-700" id="bothStats">0</div>
+                                <div class="text-purple-600">Both Success</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Summary -->
+                <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold">
+                            <i class="fas fa-chart-bar text-orange-600 mr-2"></i>Your Data Summary
+                        </h3>
+                        <button id="refreshDataBtn" class="text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="text-center p-4 bg-blue-50 rounded-lg">
+                            <div class="text-2xl font-bold text-blue-600" id="totalRecords">0</div>
+                            <div class="text-sm text-gray-600">Total Records</div>
+                        </div>
+                        <div class="text-center p-4 bg-green-50 rounded-lg">
+                            <div class="text-2xl font-bold text-green-600" id="totalCities">0</div>
+                            <div class="text-sm text-gray-600">Cities</div>
+                        </div>
+                        <div class="text-center p-4 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-600" id="totalKeywords">0</div>
+                            <div class="text-sm text-gray-600">Keywords</div>
+                        </div>
+                        <div class="text-center p-4 bg-orange-50 rounded-lg">
+                            <div class="text-2xl font-bold text-orange-600" id="recentJobs">0</div>
+                            <div class="text-sm text-gray-600">Recent Jobs</div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Data -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="text-left p-2">Business Name</th>
+                                    <th class="text-left p-2">City</th>
+                                    <th class="text-left p-2">Rating</th>
+                                    <th class="text-left p-2">Added</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentDataTable">
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-gray-500">Loading recent data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Create Sheet Modal -->
+    <div id="createSheetModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-96 mx-4">
+            <h3 class="text-lg font-semibold mb-4">Create New Google Sheet</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Sheet Name</label>
+                    <input type="text" id="newSheetName" placeholder="My Business Data" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex space-x-3">
+                    <button id="confirmCreateSheet" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg">
+                        Create Sheet
+                    </button>
+                    <button id="cancelCreateSheet" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 rounded-lg">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connect Existing Sheet Modal -->
+    <div id="connectSheetModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-96 mx-4">
+            <h3 class="text-lg font-semibold mb-4">Connect Existing Sheet</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Available Sheets</label>
+                    <select id="availableSheets" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">Loading sheets...</option>
+                    </select>
+                </div>
+                <div class="flex space-x-3">
+                    <button id="confirmConnectSheet" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg">
+                        Connect Sheet
+                    </button>
+                    <button id="cancelConnectSheet" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 rounded-lg">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/multi-tenant-dashboard.js"></script>
+</body>
+</html>

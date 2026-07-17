@@ -1,0 +1,766 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1984,
+        -288
+      ],
+      "id": "7285ba08-6b65-4535-9c1b-15a66d5bd784",
+      "name": "Wait",
+      "webhookId": "e3171afd-ba58-44e4-9a9e-a5b6716078c5"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          
+          "conditions": [
+            {
+              "id": "9bbc7577-a553-4434-90bb-bfa304c4c3b9",
+              "leftValue": "={{ $json.isNextPage }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2336,
+        -288
+      ],
+      "id": "198f94f0-69ee-4f4a-805e-502def2ce9d3",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1zbbz46lAcfhTZaSoyPPGdYIqMzoJYH8QcNs2wxnEDQ4",
+          "mode": "list",
+          "cachedResultName": "get places",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zbbz46lAcfhTZaSoyPPGdYIqMzoJYH8QcNs2wxnEDQ4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zbbz46lAcfhTZaSoyPPGdYIqMzoJYH8QcNs2wxnEDQ4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{$json.name}}",
+            "Address |": "={{$json.address}}",
+            "Phone": "={{$json.phone}}",
+            "Website": "={{$json.website}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Address |",
+              "displayName": "Address |",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        4336,
+        -32
+      ],
+      "id": "692237cc-166e-4d16-9de2-a238f81486cb",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bkvZ1kayzbl3KHxE",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/search-service",
+        "options": {
+          "responseData": "true"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -608,
+        -112
+      ],
+      "id": "026a3258-6cb2-433b-b1de-2c53811bac66",
+      "name": "Webhook",
+      "webhookId": "93b38b7b-2b60-4d71-aba3-c710f2029247"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=AIzaSyDtJBIV3gQ9yR7aMOet_gOYXZfUF-rhlxM",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={\n  \"Content-Type\": \"application/json\",\n  \"Accept\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ \n  JSON.stringify({\n    contents: [\n      {\n        parts: [\n          {\n            text: `You are a search marketing assistant. Follow these steps precisely:\n\nStep 1: Based on the keyword '${$json.keyword}', generate a diverse list of up to 20 highly relevant and commonly searched keywords. Include variations, synonyms, and long-tail terms people may use.\n\nStep 2: Generate a list of up to 35 popular and commonly searched neighborhoods or localities in '${$json.city}', India. Include both well-known and emerging areas if applicable.\n\nStep 3: Combine each keyword from Step 1 with each neighborhood from Step 2 into search-friendly phrases (e.g., 'Hazratganj ${$json.keyword}', 'Gomti Nagar bridal makeup artist').\n\nIMPORTANT:\n- Output ONLY the combined search phrases.\n- Output them as a plain comma-separated list, with **no headings, no bullet points, no explanations**.\n- Do NOT summarize or truncate the result.\n- Ensure phrases are clean and readable, in Title Case where appropriate.\n\nReturn only the final list of search phrases, comma-separated.\n`\n          }\n        ]\n      }\n    ]\n  }) \n}}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -608,
+        272
+      ],
+      "id": "69524555-48ac-4b12-9a54-34bc95ff85fa",
+      "name": "AI Generate City List"
+    },
+    {
+      "parameters": {
+        "url": "https://maps.googleapis.com/maps/api/place/textsearch/json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{$json.query}}"
+            },
+            {
+              "name": "key",
+              "value": "AIzaSyBZVi_pIWY-BlVCaWWxnK3F3whdMI1TCCQ"
+            },
+            {
+              "name": "nextPageToken",
+              "value": "={{ $json.nextPageToken }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        336
+      ],
+      "id": "af07560c-1198-4aae-9442-56001888a757",
+      "name": "extracte from map",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get input context and API response\nconst inputs = $input.all();\nconst api = inputs[0]?.json || {}; // this should be Google Places API response\nconst context = inputs[1]?.json || { page: 1, query: '' };\n\nconst query = context.query ?? '';\nconst page = context.page ?? 1;\nconst nextToken = api.next_page_token ?? null;\n\nlet placeIds = [];\n\n// ✅ Check if Google API results array exists and extract place_ids\nif (Array.isArray(api.results)) {\n  placeIds = api.results\n    .filter(place => place?.place_id)\n    .map(place => ({ place_id: place.place_id }));\n}\n\nconst output = [\n  {\n    json: {\n      query,\n      page,\n      placeIds: placeIds.length ? placeIds : [{ error: 'No valid place_id found in input 0' }]\n    }\n  }\n];\n\n// ✅ Add next page token if available\nif (nextToken && page < 3) {\n  output.push({\n    json: {\n      query,\n      page: page + 1,\n      nextPageToken: nextToken,\n      isNextPage: true\n    }\n  });\n}\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        -464
+      ],
+      "id": "84c12ecb-1bfa-4acb-b838-3725643271c7",
+      "name": "checkpages"
+    },
+    {
+      "parameters": {
+        "url": "\thttps://maps.googleapis.com/maps/api/place/details/json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "place_id",
+              "value": "={{ $json.results[0].placeIds[0].place_id }}"
+            },
+            {
+              "name": "key",
+              "value": "AIzaSyBZVi_pIWY-BlVCaWWxnK3F3whdMI1TCCQ"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1728,
+        128
+      ],
+      "id": "820df61e-210d-4c69-8786-3f54cc3736f0",
+      "name": "get cotect for exctracted data"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  json: {\n    name: $json.result?.name || '',\n    address: $json.result?.formatted_address || '',\n    phone: $json.result?.formatted_phone_number || '',\n    website: $json.result?.website || '',\n    locality: $json.locality || ''\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3888,
+        -32
+      ],
+      "id": "a12a50a0-fcc9-4448-8ac3-f52d1707b21e",
+      "name": "formateextracted data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8bbc2519-e46b-4c33-b619-c71476ebe998",
+              "name": "city",
+              "value": "={{ $json.body.city }}",
+              "type": "string"
+            },
+            {
+              "id": "03382c6b-8c18-4baa-8091-b620bdb33d2c",
+              "name": "keyword",
+              "value": "={{ $json.body.keyword }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -400,
+        -112
+      ],
+      "id": "bc324d8e-aa9a-4601-b8e1-597c155c3c73",
+      "name": "set node"
+    },
+    {
+      "parameters": {
+        "url": "\thttps://maps.googleapis.com/maps/api/place/details/json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "place_id",
+              "value": "={{ $json.results[0].placeIds[0].place_id }}"
+            },
+            {
+              "name": "key",
+              "value": "AIzaSyBZVi_pIWY-BlVCaWWxnK3F3whdMI1TCCQ"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2832,
+        -320
+      ],
+      "id": "a43749cc-d30a-4af2-8a02-5fc981621f00",
+      "name": "get cotect for exctracted data1"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  json: {\n    name: $json.result?.name || '',\n    address: $json.result?.formatted_address || '',\n    phone: $json.result?.formatted_phone_number || '',\n    website: $json.result?.website || '',\n    locality: $json.locality || ''\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3968,
+        -624
+      ],
+      "id": "3e870da7-2b1a-4f18-894a-382f1ccad250",
+      "name": "formateextracted data1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1zbbz46lAcfhTZaSoyPPGdYIqMzoJYH8QcNs2wxnEDQ4",
+          "mode": "list",
+          "cachedResultName": "get places",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zbbz46lAcfhTZaSoyPPGdYIqMzoJYH8QcNs2wxnEDQ4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zbbz46lAcfhTZaSoyPPGdYIqMzoJYH8QcNs2wxnEDQ4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{$json.name}}",
+            "Address |": "={{$json.address}}",
+            "Phone": "={{$json.phone}}",
+            "Website": "={{$json.website}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Address |",
+              "displayName": "Address |",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        4352,
+        -624
+      ],
+      "id": "cc7c0078-7a81-4663-abcc-2983448133d4",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bkvZ1kayzbl3KHxE",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      index: 0,\n      results: [],\n      query: $json.query || \"Unknown\"\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        176
+      ],
+      "id": "88386cba-f82a-4a44-9f97-3529e642aaa2",
+      "name": "Initialize Index & Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.candidates?.[0]?.content?.parts?.[0]?.text || '';\n\n// Fallback-safe phrase block (no marker check — full extraction)\nconst phraseText = rawText.trim();\n\n// Split on commas — handle multiple lines, spacing, etc.\nconst searchPhrases = phraseText\n  .split(',')\n  .map(p => p.trim())\n  .filter(p => p.length > 0); // only ignore empty strings\n\n// Return ALL queries\nreturn searchPhrases.map(phrase => ({\n  json: {\n    query: phrase\n  }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        176
+      ],
+      "id": "6f4d3d7f-e7f8-43bf-8c4f-154bbd7c791c",
+      "name": "Set",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const queries = $items(\"Set\").map(item => item.json.query || item.json);\nconst ctx = $json; // from context\nconst currentQuery = queries[ctx.index] || \"Unknown\";\n\nreturn [\n  {\n    json: {\n      query: currentQuery,\n      index: ctx.index,\n      results: ctx.results\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        176
+      ],
+      "id": "38b168ca-e5de-4c45-b34b-39578735ae6c",
+      "name": "Get Item by Index"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        592,
+        -48
+      ],
+      "id": "9ace1182-02be-467f-89e0-401156e143fe",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6bebb269-38d1-4ddc-abd8-23af6b13d1a1",
+              "leftValue": "={{ $items(\"Set\").length }}",
+              "rightValue": "={{ $json.index }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        80
+      ],
+      "id": "f4f42063-a74c-4997-ae9a-6504d2282a38",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get context from input 1 (from \"Get Item by Index\")\nconst context = $input.all()[1].json;\nconst index = context.index ?? 0;\nconst query = context.query ?? \"Unknown\";\nconst results = context.results ?? [];\n\n// 2. Get API response from input 0 (Google Maps API Text Search)\nconst apiResponse = $input.all()[0].json;\n\n// 3. Extract only place_id's from response\nconst places = apiResponse.results || [];\nconst placeIds = places.map(place => ({\n  place_id: place.place_id\n}));\n\n// 4. Add result with query and placeIds\nconst resultEntry = {\n  query,\n  placeIds\n};\n\n// 5. If next page token exists, include it\nif (apiResponse.next_page_token) {\n  resultEntry.next_page_token = apiResponse.next_page_token;\n}\n\n// 6. Push result into results array\nresults.push(resultEntry);\n\n// 7. Return updated output\nreturn [\n  {\n    json: {\n      index: index + 1,\n      query: null,\n      results\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        -64
+      ],
+      "id": "a769b285-40b3-41bc-988c-e45ea6e84dc5",
+      "name": "toekn and id"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "get cotect for exctracted data1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get cotect for exctracted data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "set node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Generate City List": {
+      "main": [
+        [
+          {
+            "node": "Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extracte from map": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "checkpages": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "extracte from map",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get cotect for exctracted data": {
+      "main": [
+        [
+          {
+            "node": "formateextracted data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "formateextracted data": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set node": {
+      "main": [
+        [
+          {
+            "node": "AI Generate City List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get cotect for exctracted data1": {
+      "main": [
+        [
+          {
+            "node": "formateextracted data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "formateextracted data1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet1": {
+      "main": [
+        []
+      ]
+    },
+    "Initialize Index & Results": {
+      "main": [
+        [
+          {
+            "node": "Get Item by Index",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set": {
+      "main": [
+        [
+          {
+            "node": "Initialize Index & Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Item by Index": {
+      "main": [
+        [
+          {
+            "node": "extracte from map",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "toekn and id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "checkpages",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Item by Index",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "get cotect for exctracted data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "checkpages",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "get cotect for exctracted data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "toekn and id": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5c80cea0-6f52-4e1c-a528-e6302b67ffae",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "92f0e60bfe35a671ff4fca41378f0255b725f28bb6f5118a32d2026680ac30a4"
+  },
+  "id": "39WMgh1lKkQ0N8mM",
+  "tags": []
+}
