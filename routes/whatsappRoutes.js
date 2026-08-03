@@ -72,23 +72,30 @@ router.get('/status', async (req, res) => {
       const reconnect = await whatsappPuppeteer.reconnectExisting(userEmail);
       if (reconnect.success) {
         qrStatus = await whatsappPuppeteer.getQRStatus(userEmail);
-        // Force the status to connected for UI while reconnecting
-        qrStatus.status = 'connected';
       }
+    }
+
+    if (qrStatus.status === 'qr_generated' || qrStatus.qrCode) {
+      return ok(res, {
+        status: 'qr_generated',
+        phoneNumber: null,
+        connectedAt: null,
+        activeMode: 'none',
+        modes: { qr: false, meta_api: false },
+        qrCode: qrStatus.qrCode,
+      });
     }
 
     // Also check DB connection for Meta API state
     let dbConn = null;
     try {
       dbConn = await getWAConn().getConnectionByEmail(userEmail);
-    } catch (_) {
-      // DB may not be available — non-fatal
-    }
+    } catch (_) { }
 
     return ok(res, {
       status: qrStatus.status,
-      phoneNumber: qrStatus.phoneNumber || dbConn?.qr_connected_phone || null,
-      connectedAt: qrStatus.connectedAt || dbConn?.qr_connected_at || null,
+      phoneNumber: qrStatus.status === 'connected' ? (qrStatus.phoneNumber || dbConn?.qr_connected_phone) : null,
+      connectedAt: qrStatus.status === 'connected' ? (qrStatus.connectedAt || dbConn?.qr_connected_at) : null,
       activeMode: dbConn?.active_mode || (qrStatus.status === 'connected' ? 'qr' : 'none'),
       modes: {
         qr: qrStatus.status === 'connected',
