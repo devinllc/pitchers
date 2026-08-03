@@ -648,20 +648,45 @@ class WhatsAppPuppeteerService extends EventEmitter {
   async initializeAllActiveSessions() {
     try {
       console.log(`[WhatsApp] Booting up active background sessions...`);
+      const fs = require('fs');
+      const path = require('path');
       const DatabaseJobManager = require('./databaseJobManager');
       const dbManager = DatabaseJobManager.getInstance();
       const WhatsAppConnection = require('../models/WhatsAppConnection');
       const waModel = new WhatsAppConnection(dbManager.databaseService);
 
-      const activeConnections = await waModel.getAllActiveConnections();
+      const bootedEmails = new Set();
+      try {
+        const activeConnections = await waModel.getAllActiveConnections();
+        for (const conn of activeConnections) {
+          if (conn.user_email) {
+            bootedEmails.add(conn.user_email);
+            console.log(`[WhatsApp] Auto-starting background session for ${conn.user_email}`);
+            this.reconnectExisting(conn.user_email).catch(e => {
+              console.error(`[WhatsApp] Failed to auto-start session for ${conn.user_email}:`, e.message);
+            });
+          }
+        }
+      } catch (dbErr) {
+        console.warn(`⚠️ Could not query active connections from DB:`, dbErr.message);
+      }
 
-      for (const conn of activeConnections) {
-        if (conn.user_email) {
-          console.log(`[WhatsApp] Auto-starting background session for ${conn.user_email}`);
-          // Reconnect without waiting for it to finish so we don't block startup
-          this.reconnectExisting(conn.user_email).catch(e => {
-            console.error(`[WhatsApp] Failed to auto-start session for ${conn.user_email}:`, e.message);
-          });
+      // Also scan disk session directory for any saved session folders not yet booted
+      if (fs.existsSync(this.sessionDir)) {
+        const dirs = fs.readdirSync(this.sessionDir);
+        for (const dir of dirs) {
+          if (dir.startsWith('session-')) {
+            const rawId = dir.replace(/^session-/, '');
+            // Extract user email from clientId format (email replaced @ with _at_)
+            const email = rawId.replace(/_at_/g, '@').replace(/_/g, '.');
+            if (!bootedEmails.has(email) && email.includes('@')) {
+              bootedEmails.add(email);
+              console.log(`[WhatsApp] Auto-restoring saved disk session for ${email}`);
+              this.reconnectExisting(email).catch(e => {
+                console.error(`[WhatsApp] Failed to restore disk session for ${email}:`, e.message);
+              });
+            }
+          }
         }
       }
     } catch (error) {
