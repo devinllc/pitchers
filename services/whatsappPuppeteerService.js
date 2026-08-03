@@ -792,17 +792,25 @@ class WhatsAppPuppeteerService extends EventEmitter {
       // Ignore errors if ps/grep isn't available or fails
     }
 
-    // 3. Delete the lock files to make sure they are gone
-    for (const file of lockFiles) {
-      if (fs.existsSync(file)) {
-        try {
-          fs.unlinkSync(file);
-          console.log(`🧹 Deleted lock file: ${file}`);
-        } catch (unErr) {
-          console.error(`⚠️ Failed to delete lock file ${file}: ${unErr.message}`);
+    // 3. Delete all lock files recursively across session folder to prevent Chromium SingletonLock crash across Docker container restarts
+    const cleanLocksRecursively = (dir) => {
+      if (!fs.existsSync(dir)) return;
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            cleanLocksRecursively(fullPath);
+          } else if (entry.isSymbolicLink() || entry.name.startsWith('Singleton')) {
+            try {
+              fs.unlinkSync(fullPath);
+              console.log(`🧹 Force deleted Chromium lock file: ${fullPath}`);
+            } catch (_) {}
+          }
         }
-      }
-    }
+      } catch (_) {}
+    };
+    cleanLocksRecursively(sessionFolder);
   }
 
   /**
