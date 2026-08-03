@@ -209,6 +209,7 @@ class WhatsAppConnection {
     }
 
     async updateMetadata(userEmail, metadata) {
+        await this.getOrCreateConnection(userEmail);
         const query = `
             UPDATE whatsapp_connections 
             SET metadata = $1, updated_at = CURRENT_TIMESTAMP

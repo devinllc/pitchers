@@ -483,10 +483,12 @@ router.post('/send', async (req, res) => {
     const apiKeyResult = await getDB().pool.query(apiKeyQuery, [userEmail]);
     if (apiKeyResult.rows.length > 0) {
       const apiKey = apiKeyResult.rows[0];
-      if (apiKey.automation_limit <= 0) {
-        return fail(res, 403, 'Monthly automation limit reached for this plan');
+      if (apiKey && apiKey.id) {
+        if (apiKey.automation_limit <= 0) {
+          return fail(res, 403, 'Monthly automation limit reached for this plan');
+        }
+        await getDB().pool.query('UPDATE api_keys SET automation_limit = automation_limit - 1 WHERE id = $1', [apiKey.id]);
       }
-      await getDB().pool.query('UPDATE api_keys SET automation_limit = automation_limit - 1 WHERE id = $1', [apiKey.id]);
     }
 
     const signature = '\n\nThis message is send by pitchers - *AI-Powered* Leads Providers and Automation Tool. *Visit now for free Trail* \n *https://pitchers.ufdevs.live*';
@@ -577,10 +579,12 @@ router.post('/send-batch', async (req, res) => {
     const apiKeyResult = await getDB().pool.query(apiKeyQuery, [userEmail]);
     if (apiKeyResult.rows.length > 0) {
       const apiKey = apiKeyResult.rows[0];
-      if (apiKey.automation_limit < leads.length) {
-        return fail(res, 403, `Monthly automation limit reached. You have ${apiKey.automation_limit} left, but tried to send ${leads.length}.`);
+      if (apiKey && apiKey.id) {
+        if (apiKey.automation_limit < leads.length) {
+          return fail(res, 403, `Monthly automation limit reached. You have ${apiKey.automation_limit} left, but tried to send ${leads.length}.`);
+        }
+        await getDB().pool.query('UPDATE api_keys SET automation_limit = automation_limit - $1 WHERE id = $2', [leads.length, apiKey.id]);
       }
-      await getDB().pool.query('UPDATE api_keys SET automation_limit = automation_limit - $1 WHERE id = $2', [leads.length, apiKey.id]);
     }
 
     if (mode === 'meta_api') {
