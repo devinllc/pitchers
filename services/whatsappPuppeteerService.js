@@ -261,7 +261,7 @@ class WhatsAppPuppeteerService extends EventEmitter {
       });
 
       // Listen for incoming messages (Auto Reply Feature)
-      client.on('message', async (msg) => {
+      client.on('message_create', async (msg) => {
         this._handleIncomingAutoReply(userEmail, client, msg).catch(err => {
           console.error(`❌ Error in Auto-Reply handler for ${userEmail}:`, err.message);
         });
@@ -795,27 +795,27 @@ class WhatsAppPuppeteerService extends EventEmitter {
 
     const state = this.sessions.get(userEmail);
     const msgTime = (msg.timestamp || 0) * 1000;
-    const connectTime = state?.connectedAt ? state.connectedAt.getTime() : Date.now();
     const now = Date.now();
+    const connectTime = state?.connectedAt ? state.connectedAt.getTime() : (now - 60000);
 
     // 1. Skip status updates, group messages, and self-sent messages
     if (msg.isStatus || msg.fromMe || (msg.from && (msg.from.endsWith('@g.us') || msg.from.includes('status@broadcast')))) {
       return;
     }
 
-    // 2. Skip startup grace period (30s after client connection)
-    if (now - connectTime < 30000) {
+    // 2. Skip startup grace period (30s after client connection) only if state.connectedAt is fresh
+    if (state?.connectedAt && (now - state.connectedAt.getTime() < 30000)) {
       console.log(`⏳ [Auto-Reply] Skipping message during 30s startup grace period for ${userEmail}`);
       return;
     }
 
-    // 3. Skip historical/cached messages
-    if (msgTime < connectTime - 5000) {
+    // 3. Skip historical/cached messages older than 2 minutes before connection
+    if (state?.connectedAt && msgTime > 0 && msgTime < (state.connectedAt.getTime() - 120000)) {
       console.log(`⏳ [Auto-Reply] Skipping historical message from ${msg.from} timestamp ${new Date(msgTime).toISOString()}`);
       return;
     }
 
-    console.log(`📬 [Auto-Reply] Message received from ${msg.from}: "${(msg.body || '').substring(0, 50)}..."`);
+    console.log(`📬 [Auto-Reply] Message received from ${msg.from} for ${userEmail}: "${(msg.body || '').substring(0, 50)}..."`);
     this.emit(`message:${userEmail}`, msg);
 
     // 4. Enforce randomized 1-3 minute per-contact cooldown (60s to 180s)
@@ -843,7 +843,9 @@ class WhatsAppPuppeteerService extends EventEmitter {
         meta = typeof conn?.metadata === 'string' ? JSON.parse(conn.metadata) : (conn?.metadata || {});
       } catch (e) { meta = {}; }
 
-      if (!meta.autoReplyEnabled || !meta.autoReplyPrompt) {
+      const isEnabled = meta.autoReplyEnabled === true || meta.autoReplyEnabled === 'true' || meta.autoReplyEnabled === '1';
+      if (!isEnabled || !meta.autoReplyPrompt) {
+        console.log(`ℹ️ [Auto-Reply] Skipping ${userEmail}: Auto-reply not enabled or empty prompt (Enabled: ${meta.autoReplyEnabled}, Prompt length: ${meta.autoReplyPrompt?.length || 0})`);
         return;
       }
 
