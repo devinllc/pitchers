@@ -731,8 +731,20 @@ STRICT RULES:
     console.log(`[SocialAgent:${platform}:PR] Already used ${usedKeywords.length} keywords, ${usedPostUrls.size} post URLs in last 30 days`);
 
     // ── Generate a UNIQUE, ROTATING hashtag keyword each run ───────────────
+    const FALLBACK_KEYWORDS = [
+      'liveStreaming', 'creatorEconomy', 'audienceEngagement', 'interactiveContent',
+      'digitalMarketing', 'communityBuilding', 'contentCreation', 'videoMarketing',
+      'growthHacking', 'saasGrowth', 'b2bSales', 'outreachStrategies',
+      'socialSelling', 'techInnovation', 'founderLife', 'growthMarketing',
+      'brandStrategy', 'leadGeneration', 'startupGrowth', 'digitalStrategy',
+      'contentMarketing', 'b2bMarketing', 'salesAutomation', 'organicGrowth'
+    ];
+    const availableFallbacks = FALLBACK_KEYWORDS.filter(k => !usedKeywords.includes(k));
+    let keyword = availableFallbacks.length > 0
+      ? availableFallbacks[Math.floor(Math.random() * availableFallbacks.length)]
+      : FALLBACK_KEYWORDS[Math.floor(Math.random() * FALLBACK_KEYWORDS.length)];
+
     const sessionSeed = Math.floor(Math.random() * 10000);
-    let keyword = 'liveStreaming'; // niche-relevant default
     try {
       const resp = await axios.post(this.baseUrl,
         {
@@ -753,7 +765,9 @@ STRICT Rules:
         { headers: { 'Authorization': `Bearer ${this.openRouterKey}`, 'Content-Type': 'application/json' } }
       );
       const kw = resp.data?.choices?.[0]?.message?.content?.trim().replace(/#|\s|\n/g, '').split(/[^a-zA-Z0-9]/)[0];
-      if (kw && kw.length > 2 && kw.length < 30) keyword = kw;
+      if (kw && kw.length > 2 && kw.length < 30 && !usedKeywords.includes(kw)) {
+        keyword = kw;
+      }
     } catch (_) { }
 
     console.log(`[SocialAgent:${platform}:PR] Using hashtag keyword: #${keyword}`);
@@ -766,10 +780,10 @@ STRICT Rules:
       const tagInstruction = brandTag
         ? `IMPORTANT: Always end your comment with these exact hashtags: ${brandTag}`
         : '';
-      const uniquenessInstruction = `CRITICAL: Your comment must be COMPLETELY UNIQUE and DIFFERENT from any previous comments. Be creative, vary your tone, angle, and phrasing every single time. Avoid starting with the same words or phrases as before.`;
+      const uniquenessInstruction = `CRITICAL: Your comment must be COMPLETELY UNIQUE, insightful, human, and DIFFERENT from any previous comments. Avoid cliché robotic openers like "Great insights!" or "Bookmarking this!". Add genuine perspective (1-2 sentences).`;
       const contentPrompt = platform === 'twitter'
-        ? `Write a short, engaging Twitter reply (max 200 chars) to a tweet about "#${keyword}" in the "${niche}" space. Sound human and genuine. ${uniquenessInstruction} ${tagInstruction} Output ONLY the reply text.`
-        : `Write a genuine, insightful comment (1-2 sentences) for a ${platform} post about "#${keyword}" in the "${niche}" space. Sound human, add real value. ${uniquenessInstruction} ${tagInstruction} Output ONLY the comment text.`;
+        ? `Write a short, thoughtful Twitter reply (max 200 chars) to a tweet about "#${keyword}" in the "${niche}" space. Sound human, natural, and helpful. ${uniquenessInstruction} ${tagInstruction} Output ONLY the reply text.`
+        : `Write a genuine, insightful comment (1-2 sentences) for a ${platform} post about "#${keyword}" in the "${niche}" space. Sound like an expert colleague sharing genuine perspective. ${uniquenessInstruction} ${tagInstruction} Output ONLY the comment text.`;
 
       const resp = await axios.post(this.baseUrl,
         { model: this.modelName, messages: [{ role: 'user', content: contentPrompt }] },
@@ -778,10 +792,8 @@ STRICT Rules:
       const generated = resp.data?.choices?.[0]?.message?.content?.trim();
       if (generated && generated.length > 5 && generated.length < 400) {
         aiComment = generated;
-        // Ensure ALL required tags are appended if missing
         const missingTags = requiredTags.filter(t => !aiComment.includes(t));
         if (missingTags.length > 0) aiComment = `${aiComment} ${missingTags.join(' ')}`;
-        // Strict Twitter Character Truncation (250 char limit)
         if (platform === 'twitter' && aiComment.length > 250) {
           aiComment = aiComment.substring(0, 245) + '...';
         }
@@ -799,7 +811,7 @@ STRICT Rules:
       await this._setupPage(page);
 
       if (platform === 'linkedin') {
-        const searchUrl = `https://www.linkedin.com/search/results/content/?keywords=${encodeURIComponent('#' + keyword)}`;
+        const searchUrl = `https://www.linkedin.com/search/results/content/?keywords=${encodeURIComponent('#' + keyword)}&sortBy=%22date_posted%22`;
         try {
           await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
         } catch (gotoErr) {
@@ -811,7 +823,6 @@ STRICT Rules:
           throw gotoErr;
         }
 
-        // Also check if we were redirected to a login page or checkpoint
         const currentUrl = page.url();
         if (currentUrl.includes('/login') || currentUrl.includes('/checkpoint') || currentUrl.includes('/signup')) {
           console.warn(`[SocialAgent:linkedin:PR] Session expired or challenged (redirected to ${currentUrl}). Disconnecting.`);
@@ -821,8 +832,7 @@ STRICT Rules:
         await new Promise(r => setTimeout(r, 6000));
 
         // Click comment button on first FRESH visible post card and extract post details
-        // LinkedIn comment buttons have no aria-label; match by text content 'Comment'
-        const usedUrlsArray = [...usedPostUrls]; // pass as plain array (can't serialize Set)
+        const usedUrlsArray = [...usedPostUrls];
         const cardInfo = await page.evaluate((usedUrls) => {
           const usedSet = new Set(usedUrls);
           const cards = Array.from(document.querySelectorAll('.feed-shared-update-v2, div[data-urn], .occludable-update'));
@@ -830,35 +840,33 @@ STRICT Rules:
             const card = cards[i];
             const rect = card.getBoundingClientRect();
             if (rect.width > 0 && rect.height > 0) {
-              // Determine the post URL first — skip if already commented
               const urn = card.getAttribute('data-urn');
               let postUrl = '';
               if (urn) {
                 postUrl = `https://www.linkedin.com/feed/update/${urn}`;
               } else {
                 const anchor = card.querySelector('a[href*="/feed/update/"], a[href*="/posts/"]');
-                postUrl = anchor ? anchor.href : window.location.href;
+                postUrl = anchor ? anchor.href.split('?')[0] : window.location.href.split('?')[0];
               }
-              // Skip posts already commented on
               if (postUrl && usedSet.has(postUrl)) continue;
 
-              // Find button whose visible text is exactly 'Comment' (not inside a count badge)
+              const textEl = card.querySelector('.feed-shared-update-v2__description, .break-words, span[dir="ltr"]');
+              const postText = textEl ? textEl.textContent.trim().substring(0, 250) : '';
+
               const allCardBtns = Array.from(card.querySelectorAll('button'));
               const commentBtn = allCardBtns.find(btn => {
                 const ariaLbl = (btn.getAttribute('aria-label') || '').toLowerCase();
                 if (ariaLbl.includes('comment')) return true;
-                // Check direct text spans - LinkedIn wraps button label in <span>
                 const spans = Array.from(btn.querySelectorAll('span'));
                 const hasCommentText = spans.some(s => s.textContent.trim().toLowerCase() === 'comment');
                 if (hasCommentText) return true;
-                // Fallback: button text itself
                 const btnText = btn.textContent.trim().toLowerCase();
                 return btnText === 'comment';
               });
               if (commentBtn) {
                 commentBtn.scrollIntoView({ block: 'center' });
                 commentBtn.click();
-                return { cardIndex: i, urn, postUrl, success: true };
+                return { cardIndex: i, urn, postUrl, postText, success: true };
               }
             }
           }
@@ -1333,18 +1341,24 @@ STRICT Rules:
             return;
           }
 
-          // Filter reels first to target trending videos, then fallback to posts
-          const reelLinks = links.filter(l => l.includes('/reel/'));
-          const postLinks = links.filter(l => l.includes('/p/'));
+          const allIgUrls = links.map(l => {
+            const full = l.startsWith('http') ? l : `https://www.instagram.com${l}`;
+            return full.split('?')[0];
+          });
+          const freshIgLinks = allIgUrls.filter(u => !usedPostUrls.has(u));
 
-          // Combine: prioritize reels (trending videos) then top posts
-          const targetPath = reelLinks[0] || postLinks[0] || links[0];
-          const targetUrl = targetPath.startsWith('http') ? targetPath : `https://www.instagram.com${targetPath}`;
+          if (freshIgLinks.length === 0) {
+            console.warn(`[SocialAgent:instagram:PR] All ${allIgUrls.length} posts for #${keyword} already commented on. Skipping.`);
+            return;
+          }
 
-          console.log(`[SocialAgent:instagram:PR] Navigating to trending content: ${targetUrl}`);
+          // Pick a random fresh post or reel
+          const targetUrl = freshIgLinks[Math.floor(Math.random() * freshIgLinks.length)];
+
+          console.log(`[SocialAgent:instagram:PR] Navigating to fresh content (${freshIgLinks.length} fresh available): ${targetUrl}`);
           await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
           await new Promise(r => setTimeout(r, 4000));
-          igPostUrl = page.url();
+          igPostUrl = page.url().split('?')[0];
         }
 
         const igSelectors = [

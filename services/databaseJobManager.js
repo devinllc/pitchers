@@ -164,13 +164,16 @@ class DatabaseJobManager {
             });
 
         } catch (error) {
-            console.error(`[DB_JOB_MANAGER] Job ${jobData.jobId} failed:`, error);
+            console.error(`[DB_JOB_MANAGER] Job ${jobData.jobId} error:`, error);
             
-            // Update job status to failed in database
+            const isStopped = error.message?.toLowerCase().includes('stop') || error.message?.toLowerCase().includes('cancel');
+            const finalStatus = isStopped ? 'stopped' : 'failed';
+
+            // Update job status in database
             try {
                 await this.jobModel.updateJob(jobData.jobId, {
-                    status: 'failed',
-                    error_message: error.message,
+                    status: finalStatus,
+                    error_message: isStopped ? 'Job stopped by user' : error.message,
                     end_time: new Date()
                 });
             } catch (updateError) {
@@ -383,9 +386,9 @@ class DatabaseJobManager {
                 }
             }
 
-            // Update job status to failed (since 'cancelled' is not allowed by DB constraint)
+            // Update job status to stopped
             await this.jobModel.updateJob(jobId, {
-                status: 'failed',
+                status: 'stopped',
                 end_time: new Date(),
                 progress: { currentStep: 'stopped_by_user' }
             });

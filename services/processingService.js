@@ -219,13 +219,24 @@ class ProcessingService {
             return results;
 
         } catch (error) {
-            // Track job failure in performance monitor
-            this.performanceMonitor.trackJobEvent('failed', { error: error.message });
+            const isStopped = Boolean(this.shouldStop) || error.message?.toLowerCase().includes('stop') || error.message?.toLowerCase().includes('cancel');
+            const hasLeads = (this.currentJobStats?.savedBusinesses || 0) > 0;
+            const finalStatus = isStopped ? 'stopped' : (hasLeads ? 'completed' : 'failed');
+
+            // Track job failure/stopped event in performance monitor
+            this.performanceMonitor.trackJobEvent(finalStatus, { error: error.message });
 
             if (this.databaseJobManager && this.databaseJobManager.jobModel) {
                 await this.databaseJobManager.jobModel.updateJob(jobId, {
-                    status: 'failed',
-                    error_message: error.message,
+                    status: finalStatus,
+                    error_message: isStopped ? 'Job stopped by user' : (hasLeads ? null : error.message),
+                    progress: {
+                        totalPhrases: this.currentJobStats?.totalPhrases || 0,
+                        processedPhrases: this.currentJobStats?.processedPhrases || 0,
+                        totalBusinesses: this.currentJobStats?.totalBusinesses || 0,
+                        savedBusinesses: this.currentJobStats?.savedBusinesses || 0,
+                        currentStep: finalStatus
+                    },
                     end_time: new Date()
                 });
             }

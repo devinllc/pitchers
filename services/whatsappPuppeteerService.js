@@ -100,9 +100,8 @@ class WhatsAppPuppeteerService extends EventEmitter {
         await this.killZombieChromiumProcesses(sessionFolder, userEmail);
       }
 
-      // Create new client with local auth (persists sessions to disk)
-      // WHATSAPP_HEADLESS=false → open a real visible browser for debugging
-      const isHeadless = process.env.WHATSAPP_HEADLESS !== 'false';
+      // Production headless mode — no GUI Chromium window
+      const isHeadless = true;
 
       const headlessArgs = [
         '--no-sandbox',
@@ -263,160 +262,9 @@ class WhatsAppPuppeteerService extends EventEmitter {
 
       // Listen for incoming messages (Auto Reply Feature)
       client.on('message', async (msg) => {
-        const state = this.sessions.get(userEmail);
-        const msgTime = (msg.timestamp || 0) * 1000;
-        const connectTime = state?.connectedAt ? state.connectedAt.getTime() : Date.now();
-
-        // 1. Skip status updates (stories/status messages)
-        if (msg.isStatus) {
-          console.log(`⏳ [Auto-Reply] Skipping status update from ${msg.from}`);
-          return;
-        }
-
-        // 2. Skip group messages to prevent loop-replies and group spam bans
-        if (msg.from && msg.from.endsWith('@g.us')) {
-          console.log(`⏳ [Auto-Reply] Skipping group message from ${msg.from}`);
-          return;
-        }
-
-        // 3. Skip historical/cached messages loaded on client connection startup
-        if (msgTime < connectTime - 10000) { // 10 seconds buffer before client ready
-          console.log(`⏳ [Auto-Reply] Skipping historical message from ${msg.from} timestamp ${new Date(msgTime).toISOString()} (Client connected at ${state?.connectedAt ? state.connectedAt.toISOString() : 'unknown'})`);
-          return;
-        }
-
-        console.log(`📬 Message from ${msg.from}: ${msg.body}`);
-        this.emit(`message:${userEmail}`, msg);
-
-        try {
-          // Check if auto-reply is enabled for this user
-          const DatabaseJobManager = require('./databaseJobManager');
-          const dbManager = DatabaseJobManager.getInstance();
-          const WhatsAppConnection = require('../models/WhatsAppConnection');
-          const waModel = new WhatsAppConnection(dbManager.databaseService);
-
-          const conn = await waModel.getConnectionByEmail(userEmail);
-          let meta = {};
-          try {
-            meta = typeof conn?.metadata === 'string' ? JSON.parse(conn.metadata) : (conn?.metadata || {});
-          } catch (e) { meta = {}; }
-
-          if (meta.autoReplyEnabled && meta.autoReplyPrompt) {
-            // Plan limit check for auto-reply
-            const ApiKey = require('../models/ApiKey');
-            const apiKeyModel = new ApiKey(dbManager.databaseService);
-            const apiKeyData = await apiKeyModel.validateApiKeyByEmail?.(userEmail) || null;
-            
-            // If we don't have a helper for validateApiKeyByEmail, let's just query it (highest tier first)
-            const apiKeyQuery = `
-                SELECT id, auto_reply_limit FROM api_keys 
-                WHERE user_email = $1 AND is_active = true 
-                ORDER BY 
-                  CASE plan_type 
-                    WHEN 'enterprise' THEN 4 
-                    WHEN 'pro' THEN 3 
-                    WHEN 'basic' THEN 2 
-                    WHEN 'trial' THEN 1 
-                    WHEN 'free' THEN 0 
-                    ELSE -1 
-                  END DESC,
-                  created_at DESC
-                LIMIT 1
-            `;
-            const apiKeyResult = await dbManager.databaseService.pool.query(apiKeyQuery, [userEmail]);
-            
-            if (apiKeyResult.rows.length > 0) {
-                const apiKey = apiKeyResult.rows[0];
-                if (apiKey.auto_reply_limit <= 0) {
-                    console.log(`🚫 Auto-reply limit reached for ${userEmail}`);
-                    return;
-                }
-                // Decrement limit
-                await dbManager.databaseService.pool.query('UPDATE api_keys SET auto_reply_limit = auto_reply_limit - 1 WHERE id = $1', [apiKey.id]);
-            }
-
-            console.log(`🤖 Auto-Reply Triggered for ${userEmail} -> to ${msg.from}`);
-
-            const axios = require('axios');
-            const modelName = process.env.OPENROUTER_MODEL || process.env.NEXT_PUBLIC_OPENROUTER_MODEL || 'openrouter/free';
-            const openRouterKey = process.env.OPENROUTER_API_KEY;
-
-            if (!openRouterKey) return console.log('❌ Auto-Reply skipped: No OPENROUTER_API_KEY');
-
-            // Wrap instructions in a premium human-centric prompt
-            const systemPrompt = `You are a friendly, smart, and helpful human sales representative/assistant.
-Tone & Style:
-- Sound exactly like a warm, supportive human colleague typing a real WhatsApp message.
-- Do NOT sound like an AI, generic bot, or computer program (never say things like "As an AI...", "Here is the requested information:", "How can I assist you today?").
-- Be conversational, natural, and helpful. Use quick, friendly greetings and warm transitions.
-- Format beautifully for WhatsApp: bold key words using *asterisks* where helpful, and keep paragraphs short with clear spacing.
-- Keep the response neat, focused, and concise.
-
-Business Instructions & Context:
-${meta.autoReplyPrompt}
-
-Incoming User Message: "${msg.body}"
-
-Respond to the message warmly, matching the context perfectly. Do not include any robotic preambles or post-scripts.`;
-
-            let generatedReply = null;
-            let axiosError = null;
-            const maxRetries = 3;
-
-            for (let attempt = 0; attempt < maxRetries; attempt++) {
-              try {
-                console.log(`[Auto-Reply] Attempt ${attempt + 1}/${maxRetries} using model: ${modelName}`);
-                const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-                  model: modelName,
-                  messages: [{ role: 'user', content: systemPrompt }]
-                }, {
-                  headers: {
-                    'Authorization': `Bearer ${openRouterKey}`,
-                    'Content-Type': 'application/json'
-                  },
-                  timeout: 15000 // 15s timeout
-                });
-
-                if (response.data?.choices?.[0]?.message?.content) {
-                  generatedReply = response.data.choices[0].message.content.trim();
-                  break; // Success!
-                }
-              } catch (err) {
-                axiosError = err;
-                const statusCode = err.response?.status || err.status || 'unknown';
-                console.warn(`⚠️ Attempt ${attempt + 1}/${maxRetries} failed for ${modelName} (Status: ${statusCode}): ${err.message}`);
-                
-                // If not last attempt, wait with backoff
-                if (attempt < maxRetries - 1) {
-                  const delay = 2000 * (attempt + 1);
-                  console.log(`[Auto-Reply] Retrying same model in ${delay}ms...`);
-                  await new Promise(r => setTimeout(r, delay));
-                }
-              }
-            }
-
-            if (generatedReply) {
-              const signature = '\n\nThis message is send by pitchers - *AI-Powered* Leads Providers and Automation Tool. *Visit now for free Trail* \n *https://pitchers.ufdevs.live*';
-              generatedReply += signature;
-
-              if (meta.autoReplyMedia && meta.autoReplyMedia.data) {
-                const media = new MessageMedia(
-                  meta.autoReplyMedia.mimeType || 'application/pdf',
-                  meta.autoReplyMedia.data,
-                  meta.autoReplyMedia.filename || 'attachment'
-                );
-                await client.sendMessage(msg.from, media, { caption: generatedReply });
-              } else {
-                await client.sendMessage(msg.from, generatedReply);
-              }
-              console.log(`✅ Auto-Reply sent to ${msg.from}`);
-            } else {
-              throw axiosError || new Error('Failed to generate completion from all available models');
-            }
-          }
-        } catch (err) {
-          console.error(`❌ Error in Auto-Reply for ${userEmail}:`, err.message);
-        }
+        this._handleIncomingAutoReply(userEmail, client, msg).catch(err => {
+          console.error(`❌ Error in Auto-Reply handler for ${userEmail}:`, err.message);
+        });
       });
 
       // Initialize client (triggers QR generation) — fire-and-forget
@@ -929,6 +777,232 @@ Respond to the message warmly, matching the context perfectly. Do not include an
           console.error(`⚠️ Failed to delete lock file ${file}: ${unErr.message}`);
         }
       }
+    }
+  }
+
+  /**
+   * Safe, Anti-Ban Auto-Reply Handler
+   * - Ignores messages received during startup chat sync (30s grace period after ready)
+   * - Ignores messages with timestamps older than connection ready time
+   * - Ignores statuses, group chats, self-sent messages, and system broadcast
+   * - Enforces 6-hour per-contact cooldown (never reply to same sender within 6h)
+   * - Enqueues messages to process one-by-one with randomized human typing delays (15–45s)
+   */
+  async _handleIncomingAutoReply(userEmail, client, msg) {
+    if (!this.contactCooldowns) this.contactCooldowns = new Map();
+    if (!this.autoReplyQueues) this.autoReplyQueues = new Map();
+    if (!this.autoReplyProcessing) this.autoReplyProcessing = new Map();
+
+    const state = this.sessions.get(userEmail);
+    const msgTime = (msg.timestamp || 0) * 1000;
+    const connectTime = state?.connectedAt ? state.connectedAt.getTime() : Date.now();
+    const now = Date.now();
+
+    // 1. Skip status updates, group messages, and self-sent messages
+    if (msg.isStatus || msg.fromMe || (msg.from && (msg.from.endsWith('@g.us') || msg.from.includes('status@broadcast')))) {
+      return;
+    }
+
+    // 2. Skip startup grace period (30s after client connection)
+    if (now - connectTime < 30000) {
+      console.log(`⏳ [Auto-Reply] Skipping message during 30s startup grace period for ${userEmail}`);
+      return;
+    }
+
+    // 3. Skip historical/cached messages
+    if (msgTime < connectTime - 5000) {
+      console.log(`⏳ [Auto-Reply] Skipping historical message from ${msg.from} timestamp ${new Date(msgTime).toISOString()}`);
+      return;
+    }
+
+    console.log(`📬 [Auto-Reply] Message received from ${msg.from}: "${(msg.body || '').substring(0, 50)}..."`);
+    this.emit(`message:${userEmail}`, msg);
+
+    // 4. Enforce randomized 1-3 minute per-contact cooldown (60s to 180s)
+    const cooldownKey = `${userEmail}:${msg.from}`;
+    const lastRepliedObj = this.contactCooldowns.get(cooldownKey);
+    const lastReplied = typeof lastRepliedObj === 'object' ? lastRepliedObj.time : (lastRepliedObj || 0);
+    const contactCooldownMs = typeof lastRepliedObj === 'object' ? lastRepliedObj.duration : 60000;
+
+    if (now - lastReplied < contactCooldownMs) {
+      const remainingSec = Math.ceil((contactCooldownMs - (now - lastReplied)) / 1000);
+      console.log(`⏳ [Auto-Reply] Skipping ${msg.from} for ${userEmail}: Cooldown active (${remainingSec}s remaining)`);
+      return;
+    }
+
+    // 5. Fetch user auto-reply configuration
+    try {
+      const DatabaseJobManager = require('./databaseJobManager');
+      const dbManager = DatabaseJobManager.getInstance();
+      const WhatsAppConnection = require('../models/WhatsAppConnection');
+      const waModel = new WhatsAppConnection(dbManager.databaseService);
+
+      const conn = await waModel.getConnectionByEmail(userEmail);
+      let meta = {};
+      try {
+        meta = typeof conn?.metadata === 'string' ? JSON.parse(conn.metadata) : (conn?.metadata || {});
+      } catch (e) { meta = {}; }
+
+      if (!meta.autoReplyEnabled || !meta.autoReplyPrompt) {
+        return;
+      }
+
+      // Check plan limits
+      const apiKeyQuery = `
+        SELECT id, auto_reply_limit FROM api_keys 
+        WHERE user_email = $1 AND is_active = true 
+        ORDER BY 
+          CASE plan_type 
+            WHEN 'enterprise' THEN 4 
+            WHEN 'pro' THEN 3 
+            WHEN 'basic' THEN 2 
+            WHEN 'trial' THEN 1 
+            WHEN 'free' THEN 0 
+            ELSE -1 
+          END DESC,
+          created_at DESC
+        LIMIT 1
+      `;
+      const apiKeyResult = await dbManager.databaseService.pool.query(apiKeyQuery, [userEmail]);
+      if (apiKeyResult.rows.length > 0 && apiKeyResult.rows[0].auto_reply_limit <= 0) {
+        console.log(`🚫 Auto-reply limit reached for ${userEmail}`);
+        return;
+      }
+
+      // Push to user queue (deduplicate: keep latest message from same sender)
+      if (!this.autoReplyQueues.has(userEmail)) {
+        this.autoReplyQueues.set(userEmail, []);
+      }
+      const existingQueue = this.autoReplyQueues.get(userEmail) || [];
+      const deduplicatedQueue = existingQueue.filter(item => item.msg.from !== msg.from);
+      deduplicatedQueue.push({ msg, meta, cooldownKey, apiKeyId: apiKeyResult.rows[0]?.id });
+      this.autoReplyQueues.set(userEmail, deduplicatedQueue);
+
+      // Trigger queue worker
+      this._processAutoReplyQueue(userEmail, client);
+
+    } catch (err) {
+      console.error(`❌ Auto-Reply lookup error for ${userEmail}:`, err.message);
+    }
+  }
+
+  async _processAutoReplyQueue(userEmail, client) {
+    if (this.autoReplyProcessing.get(userEmail)) return; // Strictly single-threaded: one reply at a time
+    this.autoReplyProcessing.set(userEmail, true);
+
+    try {
+      const queue = this.autoReplyQueues.get(userEmail) || [];
+
+      while (queue.length > 0) {
+        const item = queue.shift();
+        const { msg, meta, cooldownKey, apiKeyId } = item;
+
+        try {
+          // Re-verify cooldown in case multiple messages from same sender were queued
+          const lastRepliedObj = this.contactCooldowns.get(cooldownKey);
+          const lastReplied = typeof lastRepliedObj === 'object' ? lastRepliedObj.time : (lastRepliedObj || 0);
+          const contactCooldownMs = typeof lastRepliedObj === 'object' ? lastRepliedObj.duration : 60000;
+          if (Date.now() - lastReplied < contactCooldownMs) {
+            console.log(`⏳ [Auto-Reply Queue] Skipping ${msg.from}: Cooldown active`);
+            continue;
+          }
+
+          // Random human typing delay: 15 to 45 seconds to guarantee human-like behavior
+          const humanDelay = 15000 + Math.floor(Math.random() * 30000);
+          console.log(`⏳ [Auto-Reply Queue] Simulating human reading & typing delay (${Math.round(humanDelay / 1000)}s) before replying to ${msg.from}...`);
+          await new Promise(r => setTimeout(r, humanDelay));
+
+          // Simulate WhatsApp typing indicator
+          try {
+            const chat = await msg.getChat();
+            await chat.sendStateTyping();
+            await new Promise(r => setTimeout(r, 3000));
+          } catch (_) {}
+
+          const axios = require('axios');
+          const openRouterKey = process.env.OPENROUTER_API_KEY;
+          const modelName = process.env.OPENROUTER_MODEL || process.env.NEXT_PUBLIC_OPENROUTER_MODEL || 'openrouter/free';
+
+          if (!openRouterKey) {
+            console.log('❌ Auto-Reply skipped: No OPENROUTER_API_KEY');
+            continue;
+          }
+
+          const systemPrompt = `You are a friendly, smart, and helpful human representative/assistant.
+Tone & Style:
+- Sound like a warm, supportive human colleague typing a real WhatsApp message.
+- Do NOT sound like an AI, generic bot, or computer program (never say "As an AI...", "Here is the requested info:", "How can I assist you?").
+- Be conversational, natural, and helpful. Use quick, friendly greetings and warm transitions.
+- Format for WhatsApp: bold key words using *asterisks* where helpful.
+- Keep response concise, neat, and relevant (1-3 short paragraphs).
+
+Business Instructions & Context:
+${meta.autoReplyPrompt}
+
+Incoming Message from Contact: "${msg.body}"
+
+Respond to the message warmly and contextually. Do NOT include any promotional link signatures or bot disclaimers.`;
+
+          let generatedReply = null;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+                model: modelName,
+                messages: [{ role: 'user', content: systemPrompt }]
+              }, {
+                headers: { 'Authorization': `Bearer ${openRouterKey}`, 'Content-Type': 'application/json' },
+                timeout: 15000
+              });
+              if (response.data?.choices?.[0]?.message?.content) {
+                generatedReply = response.data.choices[0].message.content.trim();
+                break;
+              }
+            } catch (err) {
+              if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
+            }
+          }
+
+          if (generatedReply) {
+            // NO FORCED PROMOTIONAL SPAM LINK SIGNATURE!
+            if (meta.autoReplyMedia && meta.autoReplyMedia.data) {
+              const media = new MessageMedia(
+                meta.autoReplyMedia.mimeType || 'application/pdf',
+                meta.autoReplyMedia.data,
+                meta.autoReplyMedia.filename || 'attachment'
+              );
+              await client.sendMessage(msg.from, media, { caption: generatedReply });
+            } else {
+              await client.sendMessage(msg.from, generatedReply);
+            }
+
+            // Update cooldown map with fresh random 1-3 minute window (60,000 to 180,000 ms)
+            const nextCooldownMs = 60000 + Math.floor(Math.random() * 120000);
+            this.contactCooldowns.set(cooldownKey, { time: Date.now(), duration: nextCooldownMs });
+
+            // Decrement user plan limit
+            if (apiKeyId) {
+              try {
+                const DatabaseJobManager = require('./databaseJobManager');
+                const dbManager = DatabaseJobManager.getInstance();
+                await dbManager.databaseService.pool.query('UPDATE api_keys SET auto_reply_limit = auto_reply_limit - 1 WHERE id = $1', [apiKeyId]);
+              } catch (_) {}
+            }
+
+            console.log(`✅ [Auto-Reply Safe] Successfully sent human-like reply to ${msg.from}`);
+          }
+        } catch (err) {
+          console.error(`❌ Error processing auto-reply queue item for ${userEmail}:`, err.message);
+        }
+
+        // Buffer pause between processing queued messages for different contacts
+        if (queue.length > 0) {
+          const interBufferMs = 10000 + Math.floor(Math.random() * 15000); // 10-25s safe buffer
+          console.log(`⏳ [Auto-Reply Queue] Waiting ${Math.round(interBufferMs / 1000)}s inter-message buffer before processing next contact...`);
+          await new Promise(r => setTimeout(r, interBufferMs));
+        }
+      }
+    } finally {
+      this.autoReplyProcessing.set(userEmail, false);
     }
   }
 }

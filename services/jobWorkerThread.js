@@ -121,16 +121,26 @@ if (!isMainThread) {
             });
 
         } catch (error) {
-            console.error(`[WORKER_THREAD] Job processing failed:`, error);
+            console.error(`[WORKER_THREAD] Job processing error:`, error);
             
             try {
-                // Update job status to failed
                 const databaseService = new DatabaseService();
                 const jobModel = new Job(databaseService);
+
+                const isStopped = Boolean(terminationRequested) || error.message?.toLowerCase().includes('stop') || error.message?.toLowerCase().includes('cancel');
+                const hasSavedLeads = (processingService.currentJobStats?.savedBusinesses || 0) > 0;
+                const finalStatus = isStopped ? 'stopped' : (hasSavedLeads ? 'completed' : 'failed');
                 
                 await jobModel.updateJob(jobData.jobId, {
-                    status: 'failed',
-                    error_message: error.message,
+                    status: finalStatus,
+                    error_message: isStopped ? 'Job stopped by user' : (hasSavedLeads ? null : error.message),
+                    progress: {
+                        totalPhrases: processingService.currentJobStats?.totalPhrases || 0,
+                        processedPhrases: processingService.currentJobStats?.processedPhrases || 0,
+                        totalBusinesses: processingService.currentJobStats?.totalBusinesses || 0,
+                        savedBusinesses: processingService.currentJobStats?.savedBusinesses || 0,
+                        currentStep: finalStatus
+                    },
                     end_time: new Date()
                 });
             } catch (updateError) {

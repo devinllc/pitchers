@@ -99,7 +99,7 @@ class SocialPuppeteerService extends EventEmitter {
   }
 
   isHeadless() {
-    return process.env.SOCIAL_HEADLESS !== 'false';
+    return true;
   }
 
   // ── Browser lifecycle ─────────────────────────────────────────────────────
