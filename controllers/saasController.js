@@ -31,18 +31,22 @@ class SaasController {
 
             console.log(`SaaS Lead generation job initiated for user: ${userEmail}, city: ${city}, keyword: ${keyword}`);
 
-            // Validate user has connected Google Sheets
-            const isConnected = await this.multiTenantSheetsService.isUserConnected(userEmail);
-            if (!isConnected) {
-                return res.status(400).json({
-                    error: 'Google Sheets not connected',
-                    message: 'Please connect your Google Sheets account first',
-                    connectUrl: `/multi-tenant-sheets/auth/connect?userEmail=${encodeURIComponent(userEmail)}`
-                });
-            }
-
             // Handle sheet selection/creation
             let targetSheetId = sheetId || reqTargetSheetId;
+
+            // Only mandate Google Sheets connection if a specific target sheet or createNewSheet was requested
+            if (targetSheetId || createNewSheet) {
+                const isConnected = await this.multiTenantSheetsService.isUserConnected(userEmail);
+                if (!isConnected) {
+                    return res.status(400).json({
+                        error: 'Google Sheets not connected',
+                        message: 'Please connect your Google Sheets account first or leave target sheet empty for Database leads.',
+                        connectUrl: `/multi-tenant-sheets/auth/connect?userEmail=${encodeURIComponent(userEmail)}`
+                    });
+                }
+            }
+
+            // Create new sheet if requested
             if (createNewSheet && sheetName) {
                 try {
                     const newSheet = await this.multiTenantSheetsService.createUserGoogleSheet(userEmail, sheetName);

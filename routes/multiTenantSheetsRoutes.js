@@ -10,27 +10,26 @@ const userAuth = new UserEmailAuthMiddleware();
 
 // Google Sheets OAuth Routes
 
-// GET /multi-tenant-sheets/auth/url - Generate OAuth URL for user
-router.post('/auth/url',
+// Google Sheets OAuth Routes
+
+// GET & POST /multi-tenant-sheets/auth/url - Generate OAuth URL for user
+router.all('/auth/url',
     userAuth.extractUserEmail(),
     userAuth.requireUserEmail(),
     userAuth.logUserActivity(),
     (req, res) => controller.generateAuthUrl(req, res)
 );
 
-// GET /multi-tenant-sheets/auth/connect - Initiate OAuth flow for user
-router.post('/auth/connect',
+// GET & POST /multi-tenant-sheets/auth/connect - Initiate OAuth flow for user
+router.all('/auth/connect',
     userAuth.extractUserEmail(),
     userAuth.requireUserEmail(),
     userAuth.logUserActivity(),
     (req, res) => controller.initiateOAuthFlow(req, res)
 );
 
-// Note: OAuth callback is handled by existing /oauth/google-sheets/callback route
-// This route is kept for API consistency but redirects to the main callback handler
-
-// GET /multi-tenant-sheets/auth/status - Check if user has connected Google account
-router.post('/auth/status',
+// GET & POST /multi-tenant-sheets/auth/status - Check if user has connected Google account
+router.all('/auth/status',
     userAuth.extractUserEmail(),
     userAuth.requireUserEmail(),
     userAuth.logUserActivity(),
@@ -39,8 +38,8 @@ router.post('/auth/status',
 
 // Google Sheets Management Routes
 
-// GET /multi-tenant-sheets/available - Get user's available Google Sheets from their account
-router.post('/available',
+// GET & POST /multi-tenant-sheets/available - Get user's available Google Sheets from their account
+router.all('/available',
     userAuth.extractUserEmail(),
     userAuth.requireUserEmail(),
     userAuth.logUserActivity(),
@@ -48,7 +47,7 @@ router.post('/available',
 );
 
 // POST /multi-tenant-sheets/create - Create new Google Sheet for user
-router.post('/create',
+router.all('/create',
     userAuth.extractUserEmail(),
     userAuth.requireUserEmail(),
     userAuth.logUserActivity(),
@@ -56,7 +55,7 @@ router.post('/create',
 );
 
 // POST /multi-tenant-sheets/connect - Connect existing Google Sheet for user
-router.post('/connect',
+router.all('/connect',
     userAuth.extractUserEmail(),
     userAuth.requireUserEmail(),
     userAuth.validateSheetId(),
@@ -64,24 +63,24 @@ router.post('/connect',
     (req, res) => controller.connectUserGoogleSheet(req, res)
 );
 
-// POST /multi-tenant-sheets/auth/disconnect - Disconnect user's Google account
-router.post('/auth/disconnect',
+// POST /multi-tenant-sheets/auth/disconnect - Revoke user's Google account
+router.all('/auth/disconnect',
     userAuth.extractUserEmail(),
     userAuth.requireUserEmail(),
     userAuth.logUserActivity(),
     (req, res) => controller.disconnectUserAccount(req, res)
 );
 
-// GET /multi-tenant-sheets/connected - Get user's connected Google Sheets
-router.post('/connected',
+// GET & POST /multi-tenant-sheets/connected - Get user's connected Google Sheets
+router.all('/connected',
     userAuth.extractUserEmail(),
     userAuth.requireUserEmail(),
     userAuth.logUserActivity(),
     (req, res) => controller.getUserConnectedSheets(req, res)
 );
 
-// DELETE /multi-tenant-sheets/:sheetId - Disconnect Google Sheet
-router.delete('/:sheetId',
+// DELETE & POST /multi-tenant-sheets/:sheetId - Disconnect Google Sheet
+router.all('/:sheetId',
     userAuth.extractUserEmail(),
     userAuth.requireUserEmail(),
     userAuth.validateSheetId(),
@@ -91,8 +90,8 @@ router.delete('/:sheetId',
 
 // Data Management Routes
 
-// GET /multi-tenant-sheets/data - Get user's business data with pagination and filters
-router.post('/data',
+// GET & POST /multi-tenant-sheets/data - Get user's business data with pagination and filters
+router.all('/data',
     userAuth.extractUserEmail(),
     userAuth.requireUserEmail(),
     userAuth.validatePagination(),
@@ -101,8 +100,8 @@ router.post('/data',
     (req, res) => controller.getUserBusinessData(req, res)
 );
 
-// GET /multi-tenant-sheets/data/stats - Get user's business data statistics
-router.post('/data/stats',
+// GET & POST /multi-tenant-sheets/data/stats - Get user's business data statistics
+router.all('/data/stats',
     userAuth.extractUserEmail(),
     userAuth.requireUserEmail(),
     userAuth.validateDateRange(),
@@ -111,7 +110,7 @@ router.post('/data/stats',
 );
 
 // POST /multi-tenant-sheets/data/save - Save business data to user's specific sheet
-router.post('/data/save',
+router.all('/data/save',
     userAuth.extractUserEmail(),
     userAuth.requireUserEmail(),
     userAuth.validateSheetId(),

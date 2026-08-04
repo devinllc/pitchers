@@ -63,6 +63,12 @@ class MultiTenantSheetsController {
 
             const authUrl = this.multiTenantSheetsService.generateAuthUrl(userEmail, userEmail, redirectTarget);
 
+            // If browser GET request (not JSON API call), redirect directly to Google OAuth
+            const wantsJson = req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'));
+            if (req.method === 'GET' && !wantsJson) {
+                return res.redirect(authUrl);
+            }
+
             // Return OAuth URL for client-side redirect
             res.json({
                 success: true,
