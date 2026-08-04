@@ -48,15 +48,16 @@ Goal: Produce up to ${targetPhrases} unique combined search phrases in total.
 
 Step 1: Based on the keyword '${keyword}', generate a diverse list of up to ${maxKeywords} highly relevant and commonly searched keywords. Include variations, synonyms, and long-tail terms people may use.
 
-Step 2: Generate a list of up to ${maxNeighborhoods} popular and commonly searched neighborhoods or localities in '${city}', India. Include both well-known and emerging areas if applicable.
+Step 2: Generate a list of up to ${maxNeighborhoods} popular and commonly searched neighborhoods, districts, or localities in '${city}'. This could be any city anywhere in the world — use your knowledge of that specific city's geography and commonly searched areas. Include both well-known central areas and suburban/emerging neighborhoods if applicable.
 
-Step 3: Combine each keyword from Step 1 with each neighborhood from Step 2 into search-friendly phrases (e.g., 'Hazratganj ${keyword}', 'Gomti Nagar bridal makeup artist').
+Step 3: Combine each keyword from Step 1 with each neighborhood from Step 2 into search-friendly phrases (e.g., '${city} ${keyword}', 'Downtown ${keyword}', 'North ${city} ${keyword}').
 
 IMPORTANT:
 - Output ONLY the combined search phrases.
 - Output them as a plain comma-separated list, with no headings, no bullet points, no explanations.
 - Do NOT summarize or truncate the result.
 - Ensure phrases are clean and readable, in Title Case where appropriate.
+- Do NOT assume any specific country — use the actual neighborhoods of '${city}' wherever it is located.
 
 Return only the final list of search phrases, comma-separated.`;
 
