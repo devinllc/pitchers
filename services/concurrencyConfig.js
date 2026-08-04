@@ -13,8 +13,8 @@ class ConcurrencyConfig {
      * Configure concurrency settings from environment variables only
      */
     configureConcurrency() {
-        // Only configure MAX_CONCURRENT_JOBS from environment
-        this.maxConcurrentJobs = parseInt(process.env.MAX_CONCURRENT_JOBS) || 5;
+        // Configure MAX_CONCURRENT_JOBS from environment or default to 2 (optimized for 2-core VPS)
+        this.maxConcurrentJobs = parseInt(process.env.MAX_CONCURRENT_JOBS) || 2;
         
         // Job timeout from environment (optional)
         this.timeoutMinutes = parseInt(process.env.JOB_TIMEOUT_MINUTES) || 30;
