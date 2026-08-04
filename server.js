@@ -35,6 +35,7 @@ const automationRoutes = require('./routes/automationRoutes');
 const campaignRoutes = require('./routes/campaignRoutes');
 const templateRoutes = require('./routes/templateRoutes');
 const whatsappRoutes = require('./routes/whatsappRoutes');
+const whatsappLightRoutes = require('./routes/whatsappLightRoutes');
 const emailRoutes = require('./routes/emailRoutes');
 const smsRoutes = require('./routes/smsRoutes');
 
@@ -214,6 +215,7 @@ app.use('/api/v1/automation', automationRoutes);
 app.use('/api/v1/campaigns', campaignRoutes);
 app.use('/api/v1/templates', templateRoutes);
 app.use('/api/v1/whatsapp', whatsappRoutes);
+app.use('/api/v1/whatsapp-light', whatsappLightRoutes);
 app.use('/api/v1/email', emailRoutes);
 app.use('/api/v1/sms', smsRoutes);
 const voiceRoutes = require('./routes/voiceRoutes');
@@ -447,6 +449,11 @@ if (require.main === module) {
             setTimeout(() => {
                 whatsappPuppeteer.initializeAllActiveSessions();
             }, 3000); // Wait a few seconds for DB to be fully ready
+
+            const whatsappBaileys = require('./services/whatsappBaileysService').getInstance();
+            setTimeout(() => {
+                whatsappBaileys.autoStartSessions();
+            }, 4000);
             
             const automationService = require('./services/automationService');
             setTimeout(() => {
