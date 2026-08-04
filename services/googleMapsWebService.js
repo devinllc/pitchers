@@ -755,7 +755,9 @@ class GoogleMapsWebService {
       console.log('📄 Attempting to scroll...');
       
       const scrollResult = await page.evaluate(() => {
-        const feed = document.querySelector('[role="feed"]');
+        const feed = document.querySelector('[role="feed"]') || 
+                     document.querySelector('.m6QErb[aria-label]') || 
+                     document.querySelector('.section-layout-content');
         if (!feed) {
           return { success: false, reason: 'no-feed', before: 0, after: 0 };
         }
@@ -1234,17 +1236,24 @@ class GoogleMapsWebService {
   // Process a single card with timeout protection and optimized extraction
   async _processCardWithTimeout(page, entry, query, options, cardNumber) {
     try {
-      // First try to extract from list card
+      // First try to extract from list card (fast path - no click needed)
       let rec = await this._extractFromListCard(page, entry, query);
       
-      // If no phone found OR if we need email extraction, click aggressively to get full details
-      if (!rec || !rec.phone || (options.wantEmail && !rec.website)) {
-        console.log(`📞 No phone found or need website for email extraction, clicking card ${cardNumber} aggressively...`);
+      // Only click card if: no phone found at all, OR email is needed and no website yet
+      // If phone is found and email not requested → skip clicking (huge speed boost)
+      const needsClick = !rec || !rec.phone || (options.wantEmail && rec.phone && !rec.website);
+      
+      if (needsClick) {
+        if (!rec || !rec.phone) {
+          console.log(`📞 No phone in list view, clicking card ${cardNumber}...`);
+        } else {
+          console.log(`🌐 Have phone, clicking card ${cardNumber} for website/email...`);
+        }
         
-        // Add timeout protection for clicking and panel loading
+        // Add timeout protection for clicking and panel loading (30s to allow inner 15s + 6s name wait)
         const clickPromise = this._clickCardAndExtract(page, entry, query);
         const clickTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error(`Card ${cardNumber} click timeout after 15 seconds`)), 15000)
+          setTimeout(() => reject(new Error(`Card ${cardNumber} click timeout after 30 seconds`)), 30000)
         );
         
         const full = await Promise.race([clickPromise, clickTimeoutPromise]);
@@ -1252,10 +1261,15 @@ class GoogleMapsWebService {
         if (full && full.phone) {
           rec = full;
           console.log(`✅ Got contact after clicking: ${rec.name} - ${rec.phone}${rec.website ? ` - Website: ${rec.website}` : ''}`);
+        } else if (rec && rec.phone) {
+          // We had phone from list view, clicking failed but keep the list-view data
+          console.log(`⚠️ Click failed but keeping list-view data for card ${cardNumber}: ${rec.name}`);
         } else {
           console.log(`❌ Still no contact after clicking card ${cardNumber}`);
           return null;
         }
+      } else {
+        console.log(`✅ Got contact from list view (no click needed): ${rec.name} - ${rec.phone}`);
       }
       
       return rec;
@@ -1265,11 +1279,54 @@ class GoogleMapsWebService {
     }
   }
 
+  // Helper to extract place name from list card
+  async _getCardName(cardHandle) {
+    try {
+      return await cardHandle.evaluate((card) => {
+        const nameSelectors = ['.qBF1Pd', '.NrDZNb', '.qBF1Pd span', 'a.hfpxzc', '[data-value="Name"]', '.fontHeadlineSmall'];
+        for (const selector of nameSelectors) {
+          const el = card.querySelector(selector);
+          if (el && el.textContent) return el.textContent.trim();
+        }
+        return '';
+      });
+    } catch (_) {
+      return '';
+    }
+  }
+
   // Optimized click and extract method with better error handling
   async _clickCardAndExtract(page, entry, query) {
     try {
+      const expectedName = await this._getCardName(entry);
+      console.log(`🎯 Expected business name for details extraction: "${expectedName}"`);
+
       await this._clickCard(page, entry);
-      await this._sleep(2000); // Restored proper wait time for data loading
+      
+      // Wait for details panel name to match the expected name to ensure page has loaded new card
+      let panelName = '';
+      let attempts = 0;
+      const maxAttempts = 12; // 12 * 500ms = 6 seconds max wait
+      
+      while (attempts < maxAttempts) {
+        panelName = await this._getCurrentPlaceName(page);
+        if (expectedName && panelName && panelName.toLowerCase() === expectedName.toLowerCase()) {
+          break;
+        }
+        // Retry click halfway through if still not updated
+        if (attempts === 5) {
+          console.log(`⚠️ Panel name mismatch (Expected: "${expectedName}", Got: "${panelName}"). Retrying card click...`);
+          await this._clickCard(page, entry);
+        }
+        await this._sleep(500);
+        attempts++;
+      }
+
+      panelName = await this._getCurrentPlaceName(page);
+      if (expectedName && panelName && panelName.toLowerCase() !== expectedName.toLowerCase()) {
+        console.warn(`❌ Stale panel detected. Expected: "${expectedName}", Got: "${panelName}". Skipping detail extraction to prevent duplicates.`);
+        return null;
+      }
       
       // Check for pause/stop after clicking card
       if (this.isPaused && this.isPaused()) {
@@ -1532,15 +1589,16 @@ class GoogleMapsWebService {
             skippedThisPage++;
             await this.errorHandler.logAndContinue(err, { ...context, step: 'fast-card' });
             
-            // If we've had too many consecutive errors, break to prevent infinite loops
-            if (skippedThisPage > 10 && processedThisPage === 0) {
-              console.warn(`⚠️ Too many consecutive errors (${skippedThisPage}), breaking to prevent timeout`);
+            // If we've had too many consecutive errors with zero results, break
+            if (skippedThisPage > 15 && processedThisPage === 0) {
+              console.warn(`⚠️ Too many consecutive errors (${skippedThisPage}) with no results, breaking`);
               break;
             }
             
-            // If we're getting too many duplicates, break to prevent infinite loops
-            if (skippedThisPage > 20) {
-              console.warn(`⚠️ Too many skipped cards (${skippedThisPage}), likely infinite loop detected`);
+            // If we're getting too many duplicates on this scroll page, move to next scroll
+            // Threshold = 90% of entries (allow almost all to be dupes before giving up)
+            if (skippedThisPage > Math.max(38, entries.length * 0.9)) {
+              console.warn(`⚠️ Too many skipped cards (${skippedThisPage}/${entries.length}), scrolling to next batch`);
               break;
             }
           }
