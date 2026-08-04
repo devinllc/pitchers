@@ -16,8 +16,8 @@ class ConcurrencyConfig {
         // Configure MAX_CONCURRENT_JOBS from environment or default to 2 (optimized for 2-core VPS)
         this.maxConcurrentJobs = parseInt(process.env.MAX_CONCURRENT_JOBS) || 2;
         
-        // Job timeout from environment (optional)
-        this.timeoutMinutes = parseInt(process.env.JOB_TIMEOUT_MINUTES) || 30;
+        // Job timeout from environment or default to 180 minutes (3 hours)
+        this.timeoutMinutes = parseInt(process.env.JOB_TIMEOUT_MINUTES) || 180;
 
         // Additional production settings
         this.enableMemoryMonitoring = process.env.ENABLE_MEMORY_MONITORING !== 'false'; // Default enabled
