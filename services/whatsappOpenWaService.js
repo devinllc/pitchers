@@ -47,6 +47,57 @@ class WhatsAppOpenWaService extends EventEmitter {
     return path.join(this.sessionDir, `session-${clientId}`);
   }
 
+  getChromePath() {
+    let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '';
+    if (!executablePath) {
+      // Check standard search paths
+      const commonPaths = [
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
+        '/Applications/Chromium.app/Contents/MacOS/Chromium',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+      ];
+      for (const p of commonPaths) {
+        if (fs.existsSync(p)) {
+          executablePath = p;
+          break;
+        }
+      }
+    }
+
+    // If still not found, search the local Puppeteer cache directory
+    if (!executablePath) {
+      try {
+        const cacheBase = path.join(__dirname, '../.cache/puppeteer/chrome');
+        if (fs.existsSync(cacheBase)) {
+          const platforms = fs.readdirSync(cacheBase);
+          for (const platform of platforms) {
+            const platformPath = path.join(cacheBase, platform);
+            if (fs.statSync(platformPath).isDirectory()) {
+              const versions = fs.readdirSync(platformPath);
+              for (const version of versions) {
+                const exeDir = path.join(platformPath, version, 'chrome-linux64');
+                const exePath = path.join(exeDir, 'chrome');
+                if (fs.existsSync(exePath)) {
+                  executablePath = exePath;
+                  break;
+                }
+              }
+            }
+            if (executablePath) break;
+          }
+        }
+      } catch (err) {
+        console.warn('[WhatsApp-OpenWa] Error searching local puppeteer cache:', err.message);
+      }
+    }
+
+    return executablePath;
+  }
+
   /**
    * Initialize a new open-wa client connection and generate/listen for QR code
    */
@@ -79,6 +130,23 @@ class WhatsAppOpenWaService extends EventEmitter {
             status: 'initializing',
             message: 'WhatsApp Light client is currently initializing. Please wait.'
           };
+        }
+      }
+
+      // Force delete SingletonCookie, SingletonLock, and SingletonSocket before start
+      const sessionFolder = this.getSessionFolder(userEmail);
+      if (fs.existsSync(sessionFolder)) {
+        try {
+          const lockFiles = ['SingletonCookie', 'SingletonLock', 'SingletonSocket', 'lockfile'];
+          for (const file of lockFiles) {
+            const filePath = path.join(sessionFolder, file);
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+              console.log(`🧹 [WhatsApp-OpenWa] Force deleted lock file: ${filePath}`);
+            }
+          }
+        } catch (err) {
+          console.warn(`[WhatsApp-OpenWa] Warning deleting lock files:`, err.message);
         }
       }
 
@@ -131,40 +199,31 @@ class WhatsAppOpenWaService extends EventEmitter {
     const clientId = this.buildClientId(userEmail);
 
     // Discover executablePath
-    let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '';
-    if (!executablePath) {
-      const commonPaths = [
-        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-        '/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
-        '/Applications/Chromium.app/Contents/MacOS/Chromium',
-        '/usr/bin/google-chrome',
-        '/usr/bin/google-chrome-stable',
-        '/usr/bin/chromium',
-        '/usr/bin/chromium-browser',
-      ];
-      for (const p of commonPaths) {
-        if (fs.existsSync(p)) {
-          executablePath = p;
-          break;
-        }
-      }
-    }
+    const executablePath = this.getChromePath();
 
     console.log(`🚀 [WhatsApp-OpenWa] Creating client with session folder: ${sessionFolder}`);
-    
+    if (executablePath) {
+      console.log(`🔍 [WhatsApp-OpenWa] Found Chrome path: ${executablePath}`);
+    } else {
+      console.log(`⚠️ [WhatsApp-OpenWa] No Puppeteer Chrome path found. Falling back to useChrome: true`);
+    }
+
     const client = await create({
       sessionId: clientId,
       headless: true,
+      useChrome: executablePath ? false : true, // recommended if no manual executablePath
       qrTimeout: 0,
       authTimeout: 0,
       sessionDataPath: this.sessionDir,
       userDataDir: sessionFolder,
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
       ...(executablePath ? { executablePath } : {}),
       chromiumArgs: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--disable-extensions'
       ]
     });
 
