@@ -1,15 +1,15 @@
 /**
- * WhatsApp Light Integration Routes (Baileys-based)
- * Connects directly via WebSockets without Puppeteer/Chrome.
+ * WhatsApp Light Integration Routes (open-wa based)
+ * Connects directly using the open-wa automation library.
  */
 
 const express = require('express');
 const router = express.Router();
-const WhatsAppBaileysService = require('../services/whatsappBaileysService');
+const WhatsAppOpenWaService = require('../services/whatsappOpenWaService');
 const DatabaseService = require('../services/database');
 const WhatsAppConnection = require('../models/WhatsAppConnection');
 
-const whatsappLight = WhatsAppBaileysService.getInstance();
+const whatsappLight = WhatsAppOpenWaService.getInstance();
 
 let _db;
 function getDB() {

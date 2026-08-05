@@ -32,7 +32,7 @@
         "@livekit/rtc-node": "^0.13.28",
         "@sendgrid/mail": "^8.1.4",
         "@sparticuz/chromium": "^131.0.0",
-        "@whiskeysockets/baileys": "^7.0.0-rc14",
+        "@open-wa/wa-automate": "^4.68.2",
         "axios": "^1.11.0",
         "dotenv": "^16.6.1",
         "express": "^4.18.2",

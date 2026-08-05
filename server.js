@@ -450,9 +450,9 @@ if (require.main === module) {
                 whatsappPuppeteer.initializeAllActiveSessions();
             }, 3000); // Wait a few seconds for DB to be fully ready
 
-            const whatsappBaileys = require('./services/whatsappBaileysService').getInstance();
+            const whatsappOpenWa = require('./services/whatsappOpenWaService').getInstance();
             setTimeout(() => {
-                whatsappBaileys.autoStartSessions();
+                whatsappOpenWa.autoStartSessions();
             }, 4000);
             
             const automationService = require('./services/automationService');
